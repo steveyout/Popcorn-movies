@@ -3,9 +3,11 @@ import { Home, Compass, Search, Bookmark, Menu } from 'lucide-react';
 import { motion } from 'motion/react';
 import { useApp } from '../context/AppContext';
 import { NavTab } from '../types';
+import { getGlassTintConfig } from '../utils/themeStyles';
 
 export const BottomNav: React.FC = () => {
-  const { activeTab, setActiveTab, setIsDrawerOpen, watchlist } = useApp();
+  const { activeTab, setActiveTab, setIsDrawerOpen, watchlist, settings } = useApp();
+  const currentTint = getGlassTintConfig(settings.glassTint);
 
   const tabs: { id: NavTab; label: string; icon: React.ComponentType<{ className?: string }> }[] = [
     { id: 'home', label: 'Home', icon: Home },
@@ -26,7 +28,7 @@ export const BottomNav: React.FC = () => {
               key={tab.id}
               id={`bottom-nav-${tab.id}`}
               onClick={() => setActiveTab(tab.id)}
-              className="relative flex flex-col items-center justify-center flex-1 py-1 text-xs font-medium transition-colors select-none group"
+              className="relative flex flex-col items-center justify-center flex-1 py-1 text-xs font-medium transition-colors select-none group cursor-pointer"
             >
               {/* Active Ambient Glow Background */}
               {isActive && (
@@ -42,12 +44,16 @@ export const BottomNav: React.FC = () => {
                   <Icon
                     className={`w-5 h-5 transition-transform duration-200 ${
                       isActive
-                        ? 'text-indigo-400 scale-110 drop-shadow-[0_0_8px_rgba(129,140,248,0.8)]'
+                        ? 'scale-110'
                         : 'text-white/50 group-hover:text-white'
                     }`}
+                    style={{ color: isActive ? currentTint.ambientGlow : undefined }}
                   />
                   {tab.id === 'library' && watchlist.length > 0 && (
-                    <span className="absolute -top-1 -right-2 w-3.5 h-3.5 rounded-full bg-indigo-600 text-white text-[9px] font-extrabold flex items-center justify-center shadow-sm">
+                    <span 
+                      className="absolute -top-1 -right-2 w-3.5 h-3.5 rounded-full text-white text-[9px] font-extrabold flex items-center justify-center shadow-sm"
+                      style={{ backgroundColor: currentTint.ambientGlow }}
+                    >
                       {watchlist.length > 9 ? '9+' : watchlist.length}
                     </span>
                   )}

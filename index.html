@@ -3,6 +3,35 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0, user-scalable=yes" />
+
+    <!-- Window Fetch Protection Shim for Polyfills in Sandboxed Environments -->
+    <script>
+      (function() {
+        try {
+          var nativeFetch = window.fetch;
+          if (nativeFetch) {
+            var desc = Object.getOwnPropertyDescriptor(window, 'fetch');
+            if (!desc || (!desc.set && !desc.writable)) {
+              var _fetch = nativeFetch.bind(window);
+              Object.defineProperty(window, 'fetch', {
+                get: function() {
+                  return _fetch;
+                },
+                set: function(newFetch) {
+                  if (typeof newFetch === 'function') {
+                    _fetch = newFetch;
+                  }
+                },
+                configurable: true,
+                enumerable: true
+              });
+            }
+          }
+        } catch (e) {
+          console.warn('Fetch setter initialization warning:', e);
+        }
+      })();
+    </script>
     
     <!-- Primary SEO Meta Tags -->
     <title>Popcorn — Watch Trailers, Discover Movies & TV Shows</title>

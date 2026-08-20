@@ -16,11 +16,14 @@ import {
   Subtitles,
   EyeOff,
   Sun,
-  Layers
+  Layers,
+  Palette
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { useApp } from '../context/AppContext';
 import { triggerHaptic } from '../utils/haptics';
+import { GLASS_TINTS, getGlassTintConfig } from '../utils/themeStyles';
+import { GlassmorphismTint } from '../types';
 
 export const SettingsModal: React.FC = () => {
   const { isSettingsOpen, setIsSettingsOpen, settings, updateSettings, showToast } = useApp();
@@ -371,32 +374,68 @@ export const SettingsModal: React.FC = () => {
               </div>
             </div>
 
-            {/* 4. Accent Theme Synchronization (theme & color) */}
-            <div className="space-y-2">
+            {/* 4. Glassmorphism Tint Atmosphere (Violet, Emerald, Rose, Cyan, Amber, Midnight) */}
+            <div className="space-y-3 p-4 rounded-2xl bg-white/5 border border-white/10 backdrop-blur-md">
               <div className="flex items-center justify-between">
-                <label className="text-xs font-bold uppercase tracking-wider text-white/60 block">
-                  Player Accent Theme (<code className="text-cyan-400">theme</code> & <code className="text-cyan-400">color</code>)
+                <label className="text-xs font-bold uppercase tracking-wider text-white/80 flex items-center gap-2">
+                  <Palette className="w-4 h-4 text-purple-400" />
+                  <span>Glassmorphism Tint & Atmosphere</span>
                 </label>
-                <span className="text-[10px] text-white/40">Synced with VidCore hex</span>
+                <span className="text-[10px] text-white/50 bg-white/5 px-2 py-0.5 rounded-full border border-white/10">
+                  Global Background & Accents
+                </span>
               </div>
-              <div className="flex flex-wrap gap-2">
-                {accentColors.map((col) => (
-                  <button
-                    key={col.id}
-                    type="button"
-                    onClick={() => {
-                      triggerHaptic('selection');
-                      updateSettings({ accentColor: col.id as any });
-                    }}
-                    className={`px-3 py-1.5 rounded-xl text-xs font-semibold border transition-all cursor-pointer ${
-                      settings.accentColor === col.id
-                        ? `${col.class} border-white/30 font-bold scale-105 shadow-md`
-                        : 'bg-white/5 text-white/70 border-white/10 hover:border-white/20'
-                    }`}
-                  >
-                    {col.name}
-                  </button>
-                ))}
+              <p className="text-[11px] text-white/50 leading-relaxed">
+                Choose a glassmorphism ambient tone. This dynamically updates the entire application's radial lighting, glass gradients, and highlight hues.
+              </p>
+
+              <div className="grid grid-cols-2 sm:grid-cols-3 gap-2.5 pt-1">
+                {(Object.keys(GLASS_TINTS) as GlassmorphismTint[]).map((tintKey) => {
+                  const t = GLASS_TINTS[tintKey];
+                  const isSelected = (settings.glassTint || 'violet') === tintKey;
+                  return (
+                    <button
+                      key={tintKey}
+                      type="button"
+                      onClick={() => {
+                        triggerHaptic('medium');
+                        updateSettings({ 
+                          glassTint: tintKey, 
+                          accentColor: t.accentColor as any 
+                        });
+                        showToast(`Atmosphere switched to ${t.name}`);
+                      }}
+                      className={`relative p-3 rounded-2xl border text-left transition-all cursor-pointer flex flex-col justify-between overflow-hidden group ${
+                        isSelected
+                          ? 'border-white/40 bg-white/10 shadow-lg scale-[1.02]'
+                          : 'border-white/10 bg-white/5 hover:bg-white/10 hover:border-white/20'
+                      }`}
+                      style={{
+                        boxShadow: isSelected ? t.glowShadow : undefined,
+                      }}
+                    >
+                      <div className="flex items-center justify-between gap-2 mb-2">
+                        <div className="flex items-center gap-2">
+                          <span 
+                            className="w-3.5 h-3.5 rounded-full shadow-sm flex-shrink-0"
+                            style={{ backgroundColor: t.swatchHex }}
+                          />
+                          <span className="text-xs font-bold text-white leading-tight">
+                            {t.name}
+                          </span>
+                        </div>
+                        {isSelected && (
+                          <span className="w-4 h-4 rounded-full bg-white text-black flex items-center justify-center text-[10px] font-black">
+                            ✓
+                          </span>
+                        )}
+                      </div>
+                      <span className="text-[10px] text-white/50 line-clamp-1 leading-snug">
+                        {t.subtitle}
+                      </span>
+                    </button>
+                  );
+                })}
               </div>
             </div>
 

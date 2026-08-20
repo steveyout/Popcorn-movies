@@ -1,5 +1,5 @@
-import React, { useState, useEffect } from 'react';
-import { Filter, SlidersHorizontal, Film, Tv, Sparkles, RefreshCw, Star } from 'lucide-react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
+import { Filter, SlidersHorizontal, Film, Tv, Sparkles, RefreshCw, Star, Loader2, ArrowUp } from 'lucide-react';
 import { MediaItem, FilterState } from '../types';
 import { GENRES } from '../services/curatedData';
 import { tmdbService } from '../services/tmdb';
@@ -21,36 +21,118 @@ export const DiscoverView: React.FC<DiscoverViewProps> = ({ initialGenreId }) =>
   });
 
   const [results, setResults] = useState<MediaItem[]>([]);
-  const [loading, setLoading] = useState(false);
-  const [showFilterDrawer, setShowFilterDrawer] = useState(false);
+  const [page, setPage] = useState(1);
+  const [totalPages, setTotalPages] = useState(1);
+  const [totalResults, setTotalResults] = useState(0);
+  const [loading, setLoading] = useState(true);
+  const [loadingMore, setLoadingMore] = useState(false);
+  const [hasMore, setHasMore] = useState(true);
 
+  // Sentinel ref for Intersection Observer
+  const observerTargetRef = useRef<HTMLDivElement | null>(null);
+  const isFetchingRef = useRef<boolean>(false);
+
+  // Sync initial genre if supplied
   useEffect(() => {
     if (initialGenreId) {
       setFilters((prev) => ({ ...prev, genreId: initialGenreId }));
     }
   }, [initialGenreId]);
 
+  // Initial Load & Filter change handler (Reset to Page 1)
   useEffect(() => {
     let isMounted = true;
-    const fetchFiltered = async () => {
-      setLoading(true);
+    isFetchingRef.current = true;
+    setLoading(true);
+    setPage(1);
+
+    const fetchInitialPage = async () => {
       try {
-        const data = await tmdbService.discover(filters);
+        const data = await tmdbService.discover(filters, 1);
         if (isMounted) {
-          setResults(data);
+          setResults(data.results);
+          setTotalPages(data.totalPages);
+          setTotalResults(data.totalResults);
+          setHasMore(1 < data.totalPages);
         }
       } catch (err) {
-        console.error(err);
+        console.error('Discover initial load error:', err);
       } finally {
-        if (isMounted) setLoading(false);
+        if (isMounted) {
+          setLoading(false);
+          isFetchingRef.current = false;
+        }
       }
     };
 
-    fetchFiltered();
+    fetchInitialPage();
+
     return () => {
       isMounted = false;
+      isFetchingRef.current = false;
     };
   }, [filters]);
+
+  // Function to load the next page via Infinite Scroll
+  const loadNextPage = useCallback(async () => {
+    if (isFetchingRef.current || loading || loadingMore || !hasMore) return;
+
+    const nextPage = page + 1;
+    if (nextPage > totalPages) {
+      setHasMore(false);
+      return;
+    }
+
+    isFetchingRef.current = true;
+    setLoadingMore(true);
+
+    try {
+      const data = await tmdbService.discover(filters, nextPage);
+      if (data.results.length > 0) {
+        setResults((prev) => {
+          const seen = new Set(prev.map((m) => m.id));
+          const fresh = data.results.filter((m) => !seen.has(m.id));
+          return [...prev, ...fresh];
+        });
+        setPage(nextPage);
+        setTotalPages(data.totalPages);
+        setHasMore(nextPage < data.totalPages);
+      } else {
+        setHasMore(false);
+      }
+    } catch (err) {
+      console.error('Error loading next page in Discover:', err);
+    } finally {
+      setLoadingMore(false);
+      isFetchingRef.current = false;
+    }
+  }, [page, totalPages, filters, loading, loadingMore, hasMore]);
+
+  // Intersection Observer for Infinite Scrolling
+  useEffect(() => {
+    const target = observerTargetRef.current;
+    if (!target) return;
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        const [entry] = entries;
+        if (entry.isIntersecting && !isFetchingRef.current && hasMore && !loading && !loadingMore) {
+          loadNextPage();
+        }
+      },
+      {
+        root: null,
+        rootMargin: '400px', // Pre-fetch before user hits the exact bottom
+        threshold: 0.1,
+      }
+    );
+
+    observer.observe(target);
+
+    return () => {
+      observer.disconnect();
+    };
+  }, [loadNextPage, hasMore, loading, loadingMore]);
 
   const resetFilters = () => {
     triggerHaptic('light');
@@ -61,6 +143,11 @@ export const DiscoverView: React.FC<DiscoverViewProps> = ({ initialGenreId }) =>
       year: '',
       minRating: 0,
     });
+  };
+
+  const scrollToTop = () => {
+    triggerHaptic('selection');
+    window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
   const hasActiveFilters =
@@ -79,7 +166,7 @@ export const DiscoverView: React.FC<DiscoverViewProps> = ({ initialGenreId }) =>
             <span>Discover & Filter</span>
           </h1>
           <p className="text-xs sm:text-sm text-white/50 mt-1">
-            Explore {results.length} curated movies, series, and blockbusters
+            Showing {results.length}{totalResults > results.length ? ` of ${totalResults}+` : ''} curated movies, series, and blockbusters
           </p>
         </div>
 
@@ -88,7 +175,7 @@ export const DiscoverView: React.FC<DiscoverViewProps> = ({ initialGenreId }) =>
           {hasActiveFilters && (
             <button
               onClick={resetFilters}
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-white/5 hover:bg-white/10 text-xs font-semibold text-white/70 transition-colors border border-white/10 backdrop-blur-md"
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-white/5 hover:bg-white/10 text-xs font-semibold text-white/70 transition-colors border border-white/10 backdrop-blur-md cursor-pointer"
             >
               <RefreshCw className="w-3.5 h-3.5" />
               Reset
@@ -98,7 +185,7 @@ export const DiscoverView: React.FC<DiscoverViewProps> = ({ initialGenreId }) =>
           <div className="flex bg-white/5 rounded-xl p-1 border border-white/10 backdrop-blur-md">
             <button
               onClick={() => setFilters((f) => ({ ...f, mediaType: 'all' }))}
-              className={`px-3 py-1 rounded-lg text-xs font-bold transition-all ${
+              className={`px-3 py-1 rounded-lg text-xs font-bold transition-all cursor-pointer ${
                 filters.mediaType === 'all'
                   ? 'bg-white text-black shadow-sm'
                   : 'text-white/60 hover:text-white'
@@ -108,7 +195,7 @@ export const DiscoverView: React.FC<DiscoverViewProps> = ({ initialGenreId }) =>
             </button>
             <button
               onClick={() => setFilters((f) => ({ ...f, mediaType: 'movie' }))}
-              className={`flex items-center gap-1 px-3 py-1 rounded-lg text-xs font-bold transition-all ${
+              className={`flex items-center gap-1 px-3 py-1 rounded-lg text-xs font-bold transition-all cursor-pointer ${
                 filters.mediaType === 'movie'
                   ? 'bg-white text-black shadow-sm'
                   : 'text-white/60 hover:text-white'
@@ -118,7 +205,7 @@ export const DiscoverView: React.FC<DiscoverViewProps> = ({ initialGenreId }) =>
             </button>
             <button
               onClick={() => setFilters((f) => ({ ...f, mediaType: 'tv' }))}
-              className={`flex items-center gap-1 px-3 py-1 rounded-lg text-xs font-bold transition-all ${
+              className={`flex items-center gap-1 px-3 py-1 rounded-lg text-xs font-bold transition-all cursor-pointer ${
                 filters.mediaType === 'tv'
                   ? 'bg-white text-black shadow-sm'
                   : 'text-white/60 hover:text-white'
@@ -140,7 +227,7 @@ export const DiscoverView: React.FC<DiscoverViewProps> = ({ initialGenreId }) =>
           <select
             value={filters.sortBy}
             onChange={(e) => setFilters((f) => ({ ...f, sortBy: e.target.value as any }))}
-            className="bg-white/10 border border-white/10 text-white text-xs rounded-xl px-2.5 py-1.5 focus:border-white/30 outline-none backdrop-blur-md"
+            className="bg-white/10 border border-white/10 text-white text-xs rounded-xl px-2.5 py-1.5 focus:border-white/30 outline-none backdrop-blur-md cursor-pointer"
           >
             <option value="popularity.desc" className="bg-slate-900">Most Popular</option>
             <option value="vote_average.desc" className="bg-slate-900">Highest Rated</option>
@@ -157,7 +244,7 @@ export const DiscoverView: React.FC<DiscoverViewProps> = ({ initialGenreId }) =>
             <button
               key={rate}
               onClick={() => setFilters((f) => ({ ...f, minRating: rate }))}
-              className={`px-2.5 py-1 rounded-lg text-xs font-semibold flex items-center gap-1 transition-all ${
+              className={`px-2.5 py-1 rounded-lg text-xs font-semibold flex items-center gap-1 transition-all cursor-pointer ${
                 filters.minRating === rate
                   ? 'bg-amber-400 text-black font-bold shadow-sm'
                   : 'bg-white/5 hover:bg-white/10 text-white/70'
@@ -182,7 +269,7 @@ export const DiscoverView: React.FC<DiscoverViewProps> = ({ initialGenreId }) =>
           <select
             value={filters.year}
             onChange={(e) => setFilters((f) => ({ ...f, year: e.target.value }))}
-            className="bg-white/10 border border-white/10 text-white text-xs rounded-xl px-2.5 py-1.5 focus:border-white/30 outline-none backdrop-blur-md"
+            className="bg-white/10 border border-white/10 text-white text-xs rounded-xl px-2.5 py-1.5 focus:border-white/30 outline-none backdrop-blur-md cursor-pointer"
           >
             <option value="" className="bg-slate-900">All Years</option>
             <option value="2026" className="bg-slate-900">2026</option>
@@ -199,7 +286,7 @@ export const DiscoverView: React.FC<DiscoverViewProps> = ({ initialGenreId }) =>
       <div className="flex items-center gap-2 overflow-x-auto scrollbar-none pb-1">
         <button
           onClick={() => setFilters((f) => ({ ...f, genreId: null }))}
-          className={`px-3.5 py-1.5 rounded-xl text-xs font-semibold whitespace-nowrap transition-all border backdrop-blur-md ${
+          className={`px-3.5 py-1.5 rounded-xl text-xs font-semibold whitespace-nowrap transition-all border backdrop-blur-md cursor-pointer ${
             filters.genreId === null
               ? 'bg-white text-black border-white shadow-md font-bold'
               : 'bg-white/5 text-white/60 hover:text-white border-white/10'
@@ -213,7 +300,7 @@ export const DiscoverView: React.FC<DiscoverViewProps> = ({ initialGenreId }) =>
             <button
               key={g.id}
               onClick={() => setFilters((f) => ({ ...f, genreId: isSelected ? null : g.id }))}
-              className={`px-3.5 py-1.5 rounded-xl text-xs font-semibold whitespace-nowrap transition-all border backdrop-blur-md ${
+              className={`px-3.5 py-1.5 rounded-xl text-xs font-semibold whitespace-nowrap transition-all border backdrop-blur-md cursor-pointer ${
                 isSelected
                   ? 'bg-white text-black border-white shadow-md font-bold'
                   : 'bg-white/5 text-white/60 hover:text-white border-white/10'
@@ -229,11 +316,40 @@ export const DiscoverView: React.FC<DiscoverViewProps> = ({ initialGenreId }) =>
       {loading ? (
         <DiscoverGridSkeleton />
       ) : results.length > 0 ? (
-        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-4 sm:gap-5">
-          {results.map((item) => (
-            <MovieCard key={item.id} item={item} size="md" className="w-full" />
-          ))}
-        </div>
+        <>
+          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-4 sm:gap-5">
+            {results.map((item) => (
+              <MovieCard key={item.id} item={item} size="md" className="w-full" />
+            ))}
+          </div>
+
+          {/* Infinite Scroll Observer Target Sentinel */}
+          <div ref={observerTargetRef} className="h-12 w-full flex items-center justify-center pt-4">
+            {loadingMore && (
+              <div className="flex items-center gap-2.5 px-4 py-2 rounded-2xl bg-white/10 border border-white/15 backdrop-blur-xl text-white text-xs font-semibold shadow-lg animate-pulse">
+                <Loader2 className="w-4 h-4 animate-spin text-cyan-400" />
+                <span>Loading more titles...</span>
+              </div>
+            )}
+          </div>
+
+          {/* End of Collection or Back to Top Footer */}
+          {!hasMore && results.length > 0 && (
+            <div className="pt-6 pb-2 text-center flex flex-col items-center justify-center gap-3">
+              <div className="flex items-center gap-2 text-xs text-white/40 bg-white/5 border border-white/10 px-4 py-2 rounded-full backdrop-blur-md">
+                <Sparkles className="w-3.5 h-3.5 text-cyan-400" />
+                <span>You've explored all {results.length} titles in this collection</span>
+              </div>
+              <button
+                onClick={scrollToTop}
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-white/5 hover:bg-white/10 text-xs font-semibold text-white/60 hover:text-white transition-colors border border-white/10 cursor-pointer"
+              >
+                <ArrowUp className="w-3.5 h-3.5" />
+                Back to top
+              </button>
+            </div>
+          )}
+        </>
       ) : (
         <div className="p-12 text-center rounded-3xl bg-white/5 border border-white/10 space-y-3 backdrop-blur-xl">
           <Sparkles className="w-10 h-10 text-indigo-400 mx-auto" />
@@ -243,7 +359,7 @@ export const DiscoverView: React.FC<DiscoverViewProps> = ({ initialGenreId }) =>
           </p>
           <button
             onClick={resetFilters}
-            className="px-5 py-2.5 rounded-xl bg-white text-black font-bold text-xs shadow-md"
+            className="px-5 py-2.5 rounded-xl bg-white text-black font-bold text-xs shadow-md cursor-pointer"
           >
             Clear All Filters
           </button>
@@ -252,3 +368,4 @@ export const DiscoverView: React.FC<DiscoverViewProps> = ({ initialGenreId }) =>
     </div>
   );
 };
+

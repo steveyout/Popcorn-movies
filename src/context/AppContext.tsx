@@ -64,6 +64,7 @@ const DEFAULT_SETTINGS: AppSettings = {
   tmdbApiKey: (import.meta.env?.VITE_TMDB_API_KEY as string | undefined) || 'addfba41d0cb5aba2ebaae12ac92b671',
   useLiveTmdb: true,
   accentColor: 'cyan',
+  glassTint: 'violet',
   autoPlayTrailers: true,
   streamQuality: '1080p',
   autoplayNextEpisode: true,

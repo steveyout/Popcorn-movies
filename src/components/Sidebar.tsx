@@ -20,6 +20,7 @@ import { useApp } from '../context/AppContext';
 import { NavTab } from '../types';
 import { GENRES } from '../services/curatedData';
 import { PopcornLogo } from './PopcornLogo';
+import { getGlassTintConfig } from '../utils/themeStyles';
 
 interface SidebarProps {
   onSelectGenre?: (genreId: number) => void;
@@ -28,6 +29,7 @@ interface SidebarProps {
 export const Sidebar: React.FC<SidebarProps> = ({ onSelectGenre }) => {
   const { activeTab, setActiveTab, watchlist, setIsSettingsOpen, settings } = useApp();
   const [collapsed, setCollapsed] = useState(false);
+  const currentTint = getGlassTintConfig(settings.glassTint);
 
   const navItems = [
     { id: 'home' as NavTab, label: 'Home', icon: Home },
@@ -102,23 +104,26 @@ export const Sidebar: React.FC<SidebarProps> = ({ onSelectGenre }) => {
                   key={item.id}
                   id={`sidebar-nav-${item.id}`}
                   onClick={() => setActiveTab(item.id)}
-                  className={`w-full flex items-center gap-3.5 p-3 rounded-xl font-medium text-sm transition-all relative group ${
+                  className={`w-full flex items-center gap-3.5 p-3 rounded-xl font-medium text-sm transition-all relative group cursor-pointer ${
                     isActive
-                      ? 'bg-white/10 rounded-xl border border-white/10 shadow-sm text-white font-semibold'
+                      ? 'bg-white/10 rounded-xl border border-white/15 shadow-sm text-white font-semibold'
                       : 'text-white/60 hover:text-white hover:bg-white/5'
                   } ${collapsed ? 'justify-center p-2.5' : ''}`}
                   title={item.label}
                 >
-                  <Icon className={`w-5 h-5 transition-transform group-hover:scale-110 ${
-                    isActive ? 'text-indigo-400' : 'text-white/60 group-hover:text-white'
-                  }`} />
+                  <Icon 
+                    className={`w-5 h-5 transition-transform group-hover:scale-110 ${
+                      isActive ? 'scale-110' : 'text-white/60 group-hover:text-white'
+                    }`}
+                    style={{ color: isActive ? currentTint.ambientGlow : undefined }}
+                  />
                   
                   {!collapsed && (
                     <span className="flex-1 text-left">{item.label}</span>
                   )}
 
                   {!collapsed && item.badge !== undefined && (
-                    <span className="px-2 py-0.5 text-xs font-bold rounded-full bg-indigo-600/30 text-indigo-300 border border-indigo-500/30">
+                    <span className={`px-2 py-0.5 text-xs font-bold rounded-full border ${currentTint.badgeClass}`}>
                       {item.badge}
                     </span>
                   )}

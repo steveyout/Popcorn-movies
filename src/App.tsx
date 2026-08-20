@@ -20,6 +20,7 @@ import { MobileDrawer } from './components/MobileDrawer';
 import { ToastContainer } from './components/ToastContainer';
 import { AuthModal } from './components/AuthModal';
 import { UserProfileModal } from './components/UserProfileModal';
+import { getGlassTintConfig } from './utils/themeStyles';
 import { AnimatePresence, motion } from 'motion/react';
 
 const MainLayout: React.FC = () => {
@@ -28,18 +29,24 @@ const MainLayout: React.FC = () => {
     selectedMedia, 
     setSelectedMedia, 
     activePlayerMedia, 
-    setActivePlayerMedia 
+    setActivePlayerMedia,
+    settings,
   } = useApp();
   
   const [mediaFilter, setMediaFilter] = useState<'all' | 'movie' | 'tv'>('all');
   const [selectedGenreId, setSelectedGenreId] = useState<number | null>(null);
+
+  const currentTint = getGlassTintConfig(settings.glassTint);
 
   const handleSelectGenreFromSidebar = (genreId: number) => {
     setSelectedGenreId(genreId);
   };
 
   return (
-    <div className="min-h-screen bg-[#050508] text-white flex flex-row selection:bg-indigo-500 selection:text-white" style={{ background: 'radial-gradient(circle at 0% 0%, #1a1a2e 0%, #050508 50%), radial-gradient(circle at 100% 100%, #2d1b4d 0%, #050508 50%)' }}>
+    <div 
+      className="min-h-screen bg-[#050508] text-white flex flex-row transition-all duration-700 ease-in-out selection:bg-indigo-500 selection:text-white" 
+      style={{ background: currentTint.radialBackground }}
+    >
       {/* Desktop Responsive Glassmorphic Sidebar */}
       <Sidebar onSelectGenre={handleSelectGenreFromSidebar} />
 

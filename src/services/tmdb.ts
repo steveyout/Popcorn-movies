@@ -193,14 +193,18 @@ export const tmdbService = {
     });
   },
 
-  // 8. Discover with Advanced Filters
-  discover: async (filters: Partial<FilterOptions>): Promise<MediaItem[]> => {
+  // 8. Discover with Advanced Filters & Infinite Scrolling Pagination
+  discover: async (
+    filters: Partial<FilterOptions>,
+    page: number = 1
+  ): Promise<{ results: MediaItem[]; page: number; totalPages: number; totalResults: number }> => {
     const mediaType = filters.mediaType === 'tv' ? 'tv' : 'movie';
     const endpoint = mediaType === 'tv' ? '/discover/tv' : '/discover/movie';
     
     const params: Record<string, any> = {
       sort_by: filters.sortBy || 'popularity.desc',
       'vote_average.gte': filters.minRating || 0,
+      page,
     };
 
     if (filters.genreId) {
@@ -214,19 +218,37 @@ export const tmdbService = {
       }
     }
 
-    const liveData = await fetchFromTMDB<{ results: any[] }>(endpoint, params);
+    const liveData = await fetchFromTMDB<{ results: any[]; total_pages?: number; total_results?: number }>(endpoint, params);
     if (liveData?.results?.length) {
-      return liveData.results.map(i => transformTmdbItem(i, mediaType));
+      const items = liveData.results.map(i => transformTmdbItem(i, mediaType));
+      return {
+        results: items,
+        page,
+        totalPages: Math.min(liveData.total_pages || 1, 50),
+        totalResults: liveData.total_results || items.length,
+      };
     }
 
-    // Curated fallback filtering
-    return CURATED_MEDIA.filter(m => {
+    // Curated fallback filtering with pagination
+    const filtered = CURATED_MEDIA.filter(m => {
       if (filters.mediaType && filters.mediaType !== 'all' && m.media_type !== filters.mediaType) return false;
       if (filters.genreId && !m.genre_ids.includes(filters.genreId)) return false;
       if (filters.minRating && m.vote_average < filters.minRating) return false;
       if (filters.year && !formatYear(m.release_date || m.first_air_date).includes(filters.year)) return false;
       return true;
     });
+
+    const PAGE_SIZE = 12;
+    const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
+    const startIndex = (page - 1) * PAGE_SIZE;
+    const paged = filtered.slice(startIndex, startIndex + PAGE_SIZE);
+
+    return {
+      results: paged,
+      page,
+      totalPages,
+      totalResults: filtered.length,
+    };
   },
 
   // 9. Get Details + Cast + Videos + Similar

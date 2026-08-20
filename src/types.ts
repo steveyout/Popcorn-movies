@@ -77,10 +77,13 @@ export interface FilterState {
 
 export type FilterOptions = FilterState;
 
+export type GlassmorphismTint = 'violet' | 'emerald' | 'rose' | 'cyan' | 'amber' | 'midnight';
+
 export interface AppSettings {
   tmdbApiKey: string;
   useLiveTmdb: boolean;
   accentColor: 'cyan' | 'amber' | 'rose' | 'emerald' | 'purple';
+  glassTint?: GlassmorphismTint; // Dynamic Glassmorphism tint & background glow (Violet, Emerald, Rose, etc.)
   autoPlayTrailers: boolean;
   streamQuality: '1080p' | '4K' | '720p';
   // VidCore Player Settings & Parameters

@@ -248,6 +248,7 @@ export async function saveCloudSettings(userId: string, settings: AppSettings): 
     await setDoc(doc(db, 'users', userId, 'settings', 'prefs'), {
       userId,
       accentColor: settings.accentColor,
+      glassTint: settings.glassTint || 'violet',
       autoplayNextEpisode: settings.autoplayNextEpisode !== false,
       autoplayStream: settings.autoplayStream !== false,
       playerLanguage: settings.playerLanguage || 'en',
