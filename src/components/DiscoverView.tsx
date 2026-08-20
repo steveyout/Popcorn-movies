@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
+import { motion, Variants, AnimatePresence } from 'motion/react';
 import { Filter, SlidersHorizontal, Film, Tv, Sparkles, RefreshCw, Star, Loader2, ArrowUp } from 'lucide-react';
 import { MediaItem, FilterState } from '../types';
 import { GENRES } from '../services/curatedData';
@@ -6,6 +7,35 @@ import { tmdbService } from '../services/tmdb';
 import { MovieCard } from './MovieCard';
 import { DiscoverGridSkeleton } from './Skeletons';
 import { triggerHaptic } from '../utils/haptics';
+
+// Staggered Entrance Animation Variants
+const gridContainerVariants: Variants = {
+  hidden: { opacity: 0 },
+  visible: {
+    opacity: 1,
+    transition: {
+      staggerChildren: 0.04,
+      delayChildren: 0.06,
+    },
+  },
+};
+
+const gridItemVariants: Variants = {
+  hidden: {
+    opacity: 0,
+    y: 18,
+    scale: 0.96,
+  },
+  visible: {
+    opacity: 1,
+    y: 0,
+    scale: 1,
+    transition: {
+      duration: 0.38,
+      ease: [0.25, 0.46, 0.45, 0.94],
+    },
+  },
+};
 
 interface DiscoverViewProps {
   initialGenreId?: number | null;
@@ -317,11 +347,23 @@ export const DiscoverView: React.FC<DiscoverViewProps> = ({ initialGenreId }) =>
         <DiscoverGridSkeleton />
       ) : results.length > 0 ? (
         <>
-          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-4 sm:gap-5">
-            {results.map((item) => (
-              <MovieCard key={item.id} item={item} size="md" className="w-full" />
+          <motion.div
+            key={`discover-grid-${filters.mediaType}-${filters.genreId}-${filters.sortBy}-${filters.year}-${filters.minRating}`}
+            variants={gridContainerVariants}
+            initial="hidden"
+            animate="visible"
+            className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-4 sm:gap-5"
+          >
+            {results.map((item, index) => (
+              <motion.div
+                key={`${item.id}-${index}`}
+                variants={gridItemVariants}
+                className="w-full flex justify-center"
+              >
+                <MovieCard item={item} size="md" className="w-full" />
+              </motion.div>
             ))}
-          </div>
+          </motion.div>
 
           {/* Infinite Scroll Observer Target Sentinel */}
           <div ref={observerTargetRef} className="h-12 w-full flex items-center justify-center pt-4">

@@ -30,19 +30,24 @@ googleProvider.setCustomParameters({
   prompt: 'select_account'
 });
 
-// Initialize Analytics safely (checking environment support)
+// Initialize Firebase Analytics safely (checking environment support)
 let analyticsInstance: Analytics | null = null;
+
 if (typeof window !== 'undefined') {
-  isSupported().then((supported) => {
-    if (supported && firebaseConfig.measurementId) {
-      try {
-        analyticsInstance = getAnalytics(app);
-        console.log('Firebase Analytics initialized successfully.');
-      } catch (e) {
-        console.warn('Firebase Analytics initialization skipped:', e);
+  isSupported()
+    .then((supported) => {
+      if (supported) {
+        try {
+          analyticsInstance = getAnalytics(app);
+          console.log('Firebase Analytics initialized successfully.');
+        } catch (e) {
+          console.warn('Firebase Analytics initialization note:', e);
+        }
       }
-    }
-  });
+    })
+    .catch((err) => {
+      console.warn('Firebase Analytics isSupported check error:', err);
+    });
 }
 
 export const getFirebaseAnalytics = () => analyticsInstance;

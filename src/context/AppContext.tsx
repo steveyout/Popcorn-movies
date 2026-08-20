@@ -11,7 +11,7 @@ import {
   saveCloudSettings,
   fetchCloudSettings
 } from '../services/firestoreSync';
-import { trackWatchlistAction, trackSearch } from '../services/analytics';
+import { trackWatchlistAction, trackSearch, trackPageView } from '../services/analytics';
 
 interface ToastMessage {
   id: string;
@@ -145,9 +145,10 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     }
   }, [settings]);
 
-  // Dynamic Domain SEO Detection on Mount
+  // Dynamic Domain SEO Detection & Initial Analytics on Mount
   useEffect(() => {
     applyDomainSEO();
+    trackPageView('home', 'Popcorn Movies & TV Stream');
   }, []);
 
   // Real-time Cloud Firestore Watchlist & Settings Sync with Firebase Auth
@@ -193,6 +194,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const handleSetActiveTab = (tab: NavTab) => {
     triggerHaptic('light');
     setActiveTab(tab);
+    trackPageView(tab);
   };
 
   const handleSetSelectedMedia = (media: MediaItem | null) => {

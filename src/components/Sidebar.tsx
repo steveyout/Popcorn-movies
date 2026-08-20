@@ -43,7 +43,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ onSelectGenre }) => {
 
   return (
     <aside
-      className={`hidden lg:flex flex-col flex-shrink-0 h-screen sticky top-0 z-40 transition-all duration-300 border-r border-white/10 backdrop-blur-2xl bg-white/5 select-none ${
+      className={`hidden lg:flex flex-col flex-shrink-0 h-screen sticky top-0 z-40 transition-all duration-300 border-r border-white/15 backdrop-blur-3xl bg-[#080816]/60 supports-[backdrop-filter]:bg-[#080816]/45 shadow-[inset_-1px_0_1px_rgba(255,255,255,0.15)] select-none ${
         collapsed ? 'w-20 p-3' : 'w-64 p-5'
       }`}
     >

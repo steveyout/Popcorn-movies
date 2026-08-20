@@ -1,6 +1,6 @@
 import { logEvent } from 'firebase/analytics';
 import { doc, setDoc } from 'firebase/firestore';
-import { db, auth, getFirebaseAnalytics, handleFirestoreError, OperationType } from './firebase';
+import { db, auth, getFirebaseAnalytics } from './firebase';
 import { MediaItem } from '../types';
 
 export interface AnalyticsEventPayload {
@@ -18,7 +18,7 @@ export interface AnalyticsEventPayload {
 }
 
 /**
- * Universal Analytics Dispatcher (Firebase Analytics + User Firestore Event Log)
+ * Universal Analytics Dispatcher via Firebase Analytics & Firestore User Telemetry
  */
 export const trackEvent = async (eventName: string, params: Record<string, any> = {}): Promise<void> => {
   const timestamp = new Date().toISOString();
@@ -28,13 +28,13 @@ export const trackEvent = async (eventName: string, params: Record<string, any> 
     platform: 'web',
   };
 
-  // 1. Log to Google Firebase Analytics if initialized
+  // 1. Dispatch directly to Firebase Analytics
   const analytics = getFirebaseAnalytics();
   if (analytics) {
     try {
       logEvent(analytics, eventName, enhancedParams);
     } catch (err) {
-      console.warn('Firebase Analytics logEvent error:', err);
+      console.warn('[Firebase Analytics] logEvent error:', err);
     }
   }
 
@@ -42,7 +42,6 @@ export const trackEvent = async (eventName: string, params: Record<string, any> 
   const currentUser = auth.currentUser;
   if (currentUser && !currentUser.isAnonymous) {
     const eventId = `${Date.now()}_${Math.random().toString(36).substring(2, 7)}`;
-    const eventPath = `users/${currentUser.uid}/events/${eventId}`;
     try {
       await setDoc(doc(db, 'users', currentUser.uid, 'events', eventId), {
         userId: currentUser.uid,
@@ -53,10 +52,23 @@ export const trackEvent = async (eventName: string, params: Record<string, any> 
         params: enhancedParams,
       });
     } catch (error) {
-      // Non-blocking telemetry warning
       console.warn('Could not write telemetry event to Firestore:', error);
     }
   }
+};
+
+/**
+ * Tracks Page / Screen Transitions in Firebase Analytics
+ */
+export const trackPageView = (pageName: string, title?: string) => {
+  trackEvent('page_view', {
+    page_title: title || `${pageName.charAt(0).toUpperCase() + pageName.slice(1)} | Popcorn Movies`,
+    page_path: `/${pageName}`,
+  });
+  trackEvent('screen_view', {
+    screen_name: pageName,
+    screen_title: title || pageName,
+  });
 };
 
 // Specialized Convenience Event Helpers
@@ -89,6 +101,7 @@ export const trackTrailerPlay = (media: MediaItem) => {
 
 export const trackSearch = (query: string, resultCount: number) => {
   trackEvent('search', {
+    search_term: query,
     searchQuery: query,
     resultCount,
   });

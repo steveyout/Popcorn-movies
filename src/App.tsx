@@ -56,7 +56,7 @@ const MainLayout: React.FC = () => {
         <Header mediaFilter={mediaFilter} setMediaFilter={setMediaFilter} />
 
         {/* View Switcher with Smooth Page Transitions */}
-        <main className="flex-1 max-w-7xl w-full mx-auto pt-4 sm:pt-6">
+        <main className="flex-1 max-w-7xl w-full mx-auto pt-4 sm:pt-6 pb-28 sm:pb-32 lg:pb-12 px-2 sm:px-4">
           <AnimatePresence mode="wait">
             {activeTab === 'home' && (
               <motion.div

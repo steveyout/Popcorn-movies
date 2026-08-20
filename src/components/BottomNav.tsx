@@ -17,8 +17,16 @@ export const BottomNav: React.FC = () => {
   ];
 
   return (
-    <div className="lg:hidden fixed bottom-0 left-0 right-0 z-40 px-3 pb-3 pt-1">
-      <nav className="relative flex items-center justify-around h-16 rounded-2xl backdrop-blur-2xl bg-white/10 border border-white/15 shadow-2xl shadow-black/90 px-2">
+    <div 
+      id="mobile-bottom-navigation"
+      className="lg:hidden fixed bottom-0 inset-x-0 z-50 pointer-events-auto px-3 pb-[max(env(safe-area-inset-bottom),0.75rem)] pt-1 select-none"
+    >
+      <nav 
+        className="max-w-md mx-auto relative flex items-center justify-around h-16 rounded-2xl backdrop-blur-3xl bg-[#080816]/55 supports-[backdrop-filter]:bg-[#080816]/40 border border-white/20 shadow-[inset_0_1px_1px_rgba(255,255,255,0.25),0_16px_40px_rgba(0,0,0,0.85)] px-2"
+        style={{
+          boxShadow: `inset 0 1px 1px rgba(255,255,255,0.25), 0 16px 40px rgba(0,0,0,0.85), 0 0 20px -5px ${currentTint.ambientGlow}25`
+        }}
+      >
         {tabs.map((tab) => {
           const Icon = tab.icon;
           const isActive = activeTab === tab.id;
@@ -30,11 +38,11 @@ export const BottomNav: React.FC = () => {
               onClick={() => setActiveTab(tab.id)}
               className="relative flex flex-col items-center justify-center flex-1 py-1 text-xs font-medium transition-colors select-none group cursor-pointer"
             >
-              {/* Active Ambient Glow Background */}
+              {/* Active Ambient Glow Glass Pill */}
               {isActive && (
                 <motion.div
                   layoutId="activeTabGlow"
-                  className="absolute inset-x-2 inset-y-1 bg-white/10 rounded-xl border border-white/20 shadow-sm"
+                  className="absolute inset-x-2 inset-y-1 bg-white/15 backdrop-blur-md rounded-xl border border-white/25 shadow-[inset_0_1px_1px_rgba(255,255,255,0.3)]"
                   transition={{ type: 'spring', stiffness: 350, damping: 30 }}
                 />
               )}
