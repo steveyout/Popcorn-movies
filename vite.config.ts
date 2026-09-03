@@ -10,19 +10,6 @@ export default defineConfig(() => {
       alias: {
         '@': path.resolve(__dirname, '.'),
       },
-      dedupe: [
-        'firebase',
-        'firebase/app',
-        'firebase/auth',
-        'firebase/firestore',
-        'firebase/analytics',
-        '@firebase/app',
-        '@firebase/auth',
-        '@firebase/firestore',
-        '@firebase/analytics',
-        '@firebase/component',
-        '@firebase/util',
-      ],
     },
     optimizeDeps: {
       include: [
@@ -34,8 +21,12 @@ export default defineConfig(() => {
     },
     server: {
       allowedHosts: [
+        'popcornmovies.ac',
+        '.popcornmovies.ac',
         'popcornmovies.online',
         '.popcornmovies.online',
+        'bingebox.ac',
+        '.bingebox.ac',
         'bingebox.work',
         '.bingebox.work',
         'cinejoy.online',
