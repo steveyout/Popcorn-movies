@@ -67,6 +67,7 @@ const DEFAULT_SETTINGS: AppSettings = {
   glassTint: 'violet',
   autoPlayTrailers: true,
   streamQuality: '1080p',
+  defaultProvider: 'cinemaos',
   autoplayNextEpisode: true,
   autoplayStream: true,
   playerLanguage: 'en',

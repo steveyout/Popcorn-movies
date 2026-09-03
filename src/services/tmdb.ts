@@ -1,5 +1,14 @@
 import { MediaItem, Genre, CastMember, VideoTrailer, Review, FilterOptions } from '../types';
 import { CURATED_MEDIA, GENRES, FALLBACK_BACKDROP, FALLBACK_POSTER } from './curatedData';
+import {
+  getCachedData,
+  setCachedData,
+  clearTmdbCache,
+  getTmdbCacheStats,
+  pruneCache
+} from './tmdbCache';
+
+export { clearTmdbCache, getTmdbCacheStats, pruneCache };
 
 const TMDB_BASE_URL = 'https://api.themoviedb.org/3';
 const IMAGE_BASE_URL = 'https://image.tmdb.org/t/p';
@@ -9,7 +18,11 @@ const ENV_TMDB_KEY = (import.meta.env?.VITE_TMDB_API_KEY as string | undefined)?
 let customApiKey = ENV_TMDB_KEY;
 
 export const setTmdbApiKey = (key: string) => {
-  customApiKey = key.trim() || ENV_TMDB_KEY;
+  const clean = key.trim() || ENV_TMDB_KEY;
+  if (clean !== customApiKey) {
+    customApiKey = clean;
+    clearTmdbCache();
+  }
 };
 
 export const getTmdbApiKey = () => {
@@ -51,7 +64,19 @@ export const getGenreNames = (genreIds: number[] = []): string[] => {
     .filter((name): name is string => Boolean(name));
 };
 
-async function fetchFromTMDB<T>(endpoint: string, params: Record<string, string | number | boolean> = {}): Promise<T | null> {
+async function fetchFromTMDB<T>(
+  endpoint: string,
+  params: Record<string, string | number | boolean> = {},
+  options?: { bypassCache?: boolean; ttl?: number }
+): Promise<T | null> {
+  // 1. Check cached response first (L1 in-memory or L2 localStorage)
+  if (!options?.bypassCache) {
+    const cached = getCachedData<T>(endpoint, params);
+    if (cached.hit && cached.data) {
+      return cached.data;
+    }
+  }
+
   const apiKey = customApiKey || ENV_TMDB_KEY;
   const query = new URLSearchParams({
     api_key: apiKey,
@@ -67,10 +92,24 @@ async function fetchFromTMDB<T>(endpoint: string, params: Record<string, string 
     });
 
     if (!res.ok) {
+      // Offline / network fallback: use stale cached copy if available
+      const stale = getCachedData<T>(endpoint, params);
+      if (stale.data) {
+        return stale.data;
+      }
       return null;
     }
-    return (await res.json()) as T;
+
+    const data = (await res.json()) as T;
+    // 2. Persist fresh response in cache
+    setCachedData(endpoint, params, data, options?.ttl);
+    return data;
   } catch (err) {
+    // Offline / error fallback: use stale cached copy if available
+    const stale = getCachedData<T>(endpoint, params);
+    if (stale.data) {
+      return stale.data;
+    }
     return null;
   }
 }
@@ -347,5 +386,9 @@ export const tmdbService = {
       { id: 2, name: 'Supporting Performer', character: 'Allied Operative', profile_path: null },
       { id: 3, name: 'Guest Star', character: 'Key Figure', profile_path: null }
     ];
-  }
+  },
+
+  // 11. Cache Management Utilities
+  clearCache: clearTmdbCache,
+  getCacheStats: getTmdbCacheStats,
 };

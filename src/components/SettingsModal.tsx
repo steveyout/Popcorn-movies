@@ -13,29 +13,44 @@ import {
   Globe, 
   FastForward,
   Tv,
+  Film,
   Subtitles,
   EyeOff,
   Sun,
   Layers,
-  Palette
+  Palette,
+  Server,
+  Database,
+  Trash2
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { useApp } from '../context/AppContext';
 import { triggerHaptic } from '../utils/haptics';
 import { GLASS_TINTS, getGlassTintConfig } from '../utils/themeStyles';
 import { GlassmorphismTint } from '../types';
+import { providers, DEFAULT_PROVIDER_ID } from '../config/providers';
+import { getTmdbCacheStats, clearTmdbCache } from '../services/tmdb';
 
 export const SettingsModal: React.FC = () => {
   const { isSettingsOpen, setIsSettingsOpen, settings, updateSettings, showToast } = useApp();
   const [apiKeyInput, setApiKeyInput] = useState(settings.tmdbApiKey || '');
   const [testStatus, setTestStatus] = useState<'idle' | 'testing' | 'success' | 'error'>('idle');
+  const [cacheStats, setCacheStats] = useState({ count: 0, estimatedKb: 0 });
 
-  // Keep local input in sync with settings
+  // Keep local input and cache stats in sync with settings
   useEffect(() => {
     if (isSettingsOpen) {
       setApiKeyInput(settings.tmdbApiKey || '');
+      setCacheStats(getTmdbCacheStats());
     }
   }, [isSettingsOpen, settings.tmdbApiKey]);
+
+  const handleClearCache = () => {
+    triggerHaptic('medium');
+    clearTmdbCache();
+    setCacheStats({ count: 0, estimatedKb: 0 });
+    showToast('TMDB local cache cleared successfully');
+  };
 
   // Handle ESC key to close modal
   useEffect(() => {
@@ -139,7 +154,54 @@ export const SettingsModal: React.FC = () => {
               </button>
             </div>
 
-            {/* 1. VidCore Episode & Next Episode Parameters */}
+            {/* 1. Default Streaming Server Engine (11 Anonymous Servers) */}
+            <div className="space-y-3 p-4 rounded-2xl bg-white/5 border border-white/10 backdrop-blur-md">
+              <div className="flex items-center justify-between">
+                <label className="text-xs font-bold uppercase tracking-wider text-white/80 flex items-center gap-1.5">
+                  <Server className="w-4 h-4 text-cyan-400" />
+                  <span>Default Streaming Server</span>
+                </label>
+                <span className="text-[10px] text-cyan-300 font-bold px-2 py-0.5 rounded-full bg-cyan-500/20 border border-cyan-400/30">
+                  {providers.find(p => p.id === (settings.defaultProvider || DEFAULT_PROVIDER_ID))?.name || 'Server 1 (Echo)'}
+                </span>
+              </div>
+              <p className="text-[11px] text-white/50 leading-relaxed">
+                Choose your default high-speed streaming engine. Features 11 anonymous servers with Server 1 (Echo) as the primary default.
+              </p>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 pt-1">
+                {providers.map((p) => {
+                  const isSelected = (settings.defaultProvider || DEFAULT_PROVIDER_ID) === p.id;
+                  return (
+                    <button
+                      key={p.id}
+                      type="button"
+                      onClick={() => {
+                        triggerHaptic('selection');
+                        updateSettings({ defaultProvider: p.id });
+                        showToast(`Default Server set to ${p.name}`);
+                      }}
+                      className={`p-2.5 rounded-xl border text-xs font-medium text-left flex items-center justify-between transition-all cursor-pointer ${
+                        isSelected
+                          ? 'bg-gradient-to-r from-cyan-500/30 to-blue-600/30 border-cyan-400 text-white font-bold shadow-md'
+                          : 'bg-black/30 border-white/10 text-white/70 hover:text-white hover:bg-white/10'
+                      }`}
+                    >
+                      <div className="flex items-center gap-2">
+                        <span className={`w-2 h-2 rounded-full ${isSelected ? 'bg-cyan-400 shadow-[0_0_6px_rgba(6,182,212,0.8)]' : 'bg-white/20'}`} />
+                        <span>{p.name}</span>
+                      </div>
+                      {p.id === DEFAULT_PROVIDER_ID && (
+                        <span className="text-[9px] px-1.5 py-0.5 rounded bg-cyan-500/20 text-cyan-300 border border-cyan-400/30 uppercase font-bold">
+                          Default
+                        </span>
+                      )}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+
+            {/* 2. VidCore Episode & Next Episode Parameters */}
             <div className="space-y-3 p-4 rounded-2xl bg-white/5 border border-white/10 backdrop-blur-md">
               <div className="flex items-center justify-between">
                 <label className="text-xs font-bold uppercase tracking-wider text-white/80 flex items-center gap-1.5">
@@ -175,6 +237,38 @@ export const SettingsModal: React.FC = () => {
                     <span
                       className={`absolute top-0.5 left-0.5 w-5 h-5 rounded-full bg-white transition-transform ${
                         settings.autoplayNextEpisode !== false ? 'transform translate-x-6' : ''
+                      }`}
+                    />
+                  </button>
+                </div>
+
+                {/* Autoplay Trailers on Movie Details Open */}
+                <div className="flex items-center justify-between p-3 rounded-xl bg-black/40 border border-white/10">
+                  <div className="pr-3">
+                    <span className="text-xs font-bold text-white flex items-center gap-1.5">
+                      <Film className="w-3.5 h-3.5 text-amber-400" />
+                      <span>Autoplay Trailers in Movie Details</span>
+                    </span>
+                    <span className="text-[11px] text-white/50 block mt-0.5 leading-relaxed">
+                      Automatically streams official YouTube trailer previews when opening any movie or TV series modal.
+                    </span>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      triggerHaptic('selection');
+                      const nextVal = settings.autoPlayTrailers === false ? true : false;
+                      updateSettings({ autoPlayTrailers: nextVal });
+                      showToast(nextVal ? 'Trailer Autoplay Enabled' : 'Trailer Autoplay Disabled');
+                    }}
+                    className={`relative w-12 h-6 rounded-full transition-colors cursor-pointer flex-shrink-0 ${
+                      settings.autoPlayTrailers !== false ? 'bg-cyan-500' : 'bg-white/20'
+                    }`}
+                    aria-label="Toggle Autoplay Trailers"
+                  >
+                    <span
+                      className={`absolute top-0.5 left-0.5 w-5 h-5 rounded-full bg-white transition-transform ${
+                        settings.autoPlayTrailers !== false ? 'transform translate-x-6' : ''
                       }`}
                     />
                   </button>
@@ -486,6 +580,31 @@ export const SettingsModal: React.FC = () => {
                 >
                   Get Free Key <ExternalLink className="w-3 h-3" />
                 </a>
+              </div>
+
+              {/* LocalStorage Cache Indicator & Quick Clear */}
+              <div className="pt-2 border-t border-white/10 flex items-center justify-between text-[11px] text-white/60">
+                <div className="flex items-center gap-1.5">
+                  <Database className="w-3.5 h-3.5 text-cyan-400" />
+                  <span>
+                    Local Cache:{' '}
+                    <strong className="text-white font-medium">
+                      {cacheStats.count} {cacheStats.count === 1 ? 'request' : 'requests'}
+                    </strong>{' '}
+                    ({cacheStats.estimatedKb} KB)
+                  </span>
+                </div>
+                {cacheStats.count > 0 && (
+                  <button
+                    type="button"
+                    onClick={handleClearCache}
+                    className="text-rose-400/80 hover:text-rose-300 flex items-center gap-1 transition-colors cursor-pointer"
+                    title="Purge cached TMDB responses to fetch fresh data"
+                  >
+                    <Trash2 className="w-3 h-3" />
+                    <span>Clear Cache</span>
+                  </button>
+                )}
               </div>
             </div>
 

@@ -2,28 +2,20 @@
 
 > Popcorn is a modern cinema discovery Progressive Web App (PWA) built with frosted-glass aesthetics, real-time TMDB movie & TV data integration, high-definition trailer playback, circular user score rings, and offline-capable library management.
 
-## Overview
-- **App Name**: Popcorn
-- **Category**: Entertainment & Video Streaming Discovery
-- **Technology**: React 18, TypeScript, Tailwind CSS, Motion, Service Worker PWA
-- **Data Providers**: The Movie Database (TMDB API v3), YouTube Official Embedded Trailers
-- **Progressive Web App**: Full PWA support with offline caching, install prompts for mobile & desktop, and standalone display.
+## Documentation & Technical Specifications
+- [Full LLM Specification](/llms-full.txt): Comprehensive architectural, component, and schema documentation for LLMs and AI assistants.
+- [PWA Web App Manifest](/manifest.json): Progressive Web App configuration, theme tokens, and standalone display manifest.
+- [Robots Exclusion Policy](/robots.txt): Machine-readable crawling and indexing permissions for search engines and AI crawlers.
+- [XML Sitemap](/sitemap.xml): Complete indexing map of all primary views, categories, and deep links.
 
-## Key Capabilities & Features
-- **Featured Cinema Banner**: Dynamic hero billboard showcasing trending blockbusters with one-click trailer modals, quick watchlist toggles, and detailed metadata.
-- **Top 10 Ranked Row**: Visual leaderboard of top-charting theatrical releases and trending streaming series with rank numbering.
-- **Circular Rating Rings**: Glassmorphic SVG progress rings displaying color-coded TMDB user approval percentages (Emerald for >=70%, Amber for 50-69%, Rose for <50%).
-- **Interactive Trailer Modal**: Seamless YouTube player integration for 4K/HD trailers, film synopses, release dates, runtime, genre tags, and cast details.
-- **Discover & Genre Filtering**: Granular media filtering across Movies and TV Shows by genre (Action, Sci-Fi, Drama, Comedy, Animation, Horror, Romance, Thriller, Documentary).
-- **Instant Search & Suggestions**: Real-time debounce search querying TMDB catalog with fallback curated results.
-- **Personal Library & Watchlist**: Local persistence and offline caching of saved movies and series, marked as watched or downloaded.
-- **Customizable TMDB API Key**: Built-in settings modal allowing users to enter custom TMDB API keys with instant local storage persistence.
+## Main Navigation & Features
+- [Home Feed](/?tab=home): Featured cinema billboard carousel, Top 10 leaderboards, trending blockbusters, and popular TV series.
+- [Discover Movies](/?tab=browse&type=movie): Granular media filtering across feature films by genre, release year, sort order, and TMDB user score.
+- [Discover TV Shows](/?tab=browse&type=tv): Explore serialized television, drama series, and network seasons.
+- [Search Catalog](/?tab=search): Real-time debounced search across titles, actors, genres, and directors with instant query suggestions.
+- [Personal Library](/?tab=library): User's offline-resilient watchlist, favorites collection, and custom playback preferences.
 
-## Main Navigation Endpoints
-- `/` or `/?tab=home`: Home feed with featured hero banner, Top 10 leaderboards, trending movies, and popular TV series.
-- `/?tab=browse`: Discover catalog with genre pills and media type toggle (Movies, TV).
-- `/?tab=search`: Search interface with query input, instant results grid, and quick genre suggestions.
-- `/?tab=library`: User's saved watchlist and history with offline playback indicator.
-- `/manifest.json`: Web app manifest for PWA installation.
-- `/sw.js`: Service worker handling caching and offline resilience.
-- `/llms-full.txt`: Full technical documentation and catalog breakdown for LLM agents.
+## Data Providers & Integrations
+- [The Movie Database (TMDB)](https://www.themoviedb.org): Real-time movie and television metadata, high-resolution poster art, cast lists, and audience ratings.
+- [YouTube](https://www.youtube.com): Embedded official high-definition trailers and video teaser clips.
+

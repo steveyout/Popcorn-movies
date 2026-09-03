@@ -16,7 +16,9 @@ import {
   Users,
   MessageSquare,
   ChevronLeft,
-  ChevronRight
+  ChevronRight,
+  Volume2,
+  VolumeX
 } from 'lucide-react';
 import { MediaItem, CastMember } from '../types';
 import { getImageUrl, getBackdropUrl, formatYear, formatDuration, tmdbService } from '../services/tmdb';
@@ -39,6 +41,7 @@ export const DetailModal: React.FC<DetailModalProps> = ({ media, onClose }) => {
     watchlist,
     toggleFavorite, 
     toggleDownload,
+    settings,
     showToast 
   } = useApp();
 
@@ -46,6 +49,8 @@ export const DetailModal: React.FC<DetailModalProps> = ({ media, onClose }) => {
   const [cast, setCast] = useState<CastMember[]>(media.cast || []);
   const [loading, setLoading] = useState(false);
   const [activeTab, setActiveTab] = useState<'overview' | 'cast' | 'reviews'>('overview');
+  const [isPlayingTrailer, setIsPlayingTrailer] = useState<boolean>(false);
+  const [isTrailerMuted, setIsTrailerMuted] = useState<boolean>(true);
   const castScrollRef = useRef<HTMLDivElement>(null);
   const similarScrollRef = useRef<HTMLDivElement>(null);
 
@@ -82,6 +87,10 @@ export const DetailModal: React.FC<DetailModalProps> = ({ media, onClose }) => {
         const full = await tmdbService.getDetails(media.id, media.media_type);
         if (isMounted) {
           setDetails(full);
+          if (full.trailer_key && settings.autoPlayTrailers !== false) {
+            setIsPlayingTrailer(true);
+            trackTrailerPlay(full);
+          }
           if (full.cast && full.cast.length > 0) {
             setCast(full.cast);
           } else {
@@ -105,6 +114,92 @@ export const DetailModal: React.FC<DetailModalProps> = ({ media, onClose }) => {
       isMounted = false;
     };
   }, [media.id, media.media_type]);
+
+  // Dynamically inject Schema.org 'Movie' and 'TVSeries' JSON-LD schema for search engines
+  useEffect(() => {
+    const isTV = media.media_type === 'tv' || Boolean(media.first_air_date) || Boolean(media.number_of_seasons);
+    const mediaTitle = details.title || details.name || media.title || media.name || 'Title';
+    const mediaOverview = details.overview || media.overview || '';
+    const posterUrl = getImageUrl(details.poster_path || media.poster_path, 'w500');
+    const backdropImg = getBackdropUrl(details.backdrop_path || media.backdrop_path, 'w1280');
+    const releaseDate = details.release_date || media.release_date || details.first_air_date || media.first_air_date;
+    const ratingValue = (details.vote_average || media.vote_average || 7.5).toFixed(1);
+    const ratingCount = String(details.vote_count || media.vote_count || 150);
+
+    const schemaData = isTV
+      ? {
+          '@context': 'https://schema.org',
+          '@type': 'TVSeries',
+          name: mediaTitle,
+          alternateName: media.name,
+          description: mediaOverview,
+          image: [posterUrl, backdropImg].filter(Boolean),
+          startDate: releaseDate,
+          genre: (details.genres || []).map((g) => g.name),
+          numberOfSeasons: details.number_of_seasons || 1,
+          aggregateRating: {
+            '@type': 'AggregateRating',
+            ratingValue: ratingValue,
+            bestRating: '10',
+            worstRating: '1',
+            ratingCount: ratingCount,
+          },
+          publisher: {
+            '@type': 'Organization',
+            name: 'Popcorn',
+            url: 'https://cinejoy.online',
+          },
+        }
+      : {
+          '@context': 'https://schema.org',
+          '@type': 'Movie',
+          name: mediaTitle,
+          alternateName: media.title,
+          description: mediaOverview,
+          image: [posterUrl, backdropImg].filter(Boolean),
+          datePublished: releaseDate,
+          genre: (details.genres || []).map((g) => g.name),
+          duration: details.runtime ? `PT${details.runtime}M` : undefined,
+          aggregateRating: {
+            '@type': 'AggregateRating',
+            ratingValue: ratingValue,
+            bestRating: '10',
+            worstRating: '1',
+            ratingCount: ratingCount,
+          },
+          publisher: {
+            '@type': 'Organization',
+            name: 'Popcorn',
+            url: 'https://cinejoy.online',
+          },
+        };
+
+    let scriptTag = document.getElementById('schema-dynamic-detail-jsonld') as HTMLScriptElement | null;
+    if (!scriptTag) {
+      scriptTag = document.createElement('script');
+      scriptTag.id = 'schema-dynamic-detail-jsonld';
+      scriptTag.type = 'application/ld+json';
+      document.head.appendChild(scriptTag);
+    }
+    scriptTag.textContent = JSON.stringify(schemaData, null, 2);
+
+    return () => {
+      // Revert to default site schema upon closing modal
+      if (scriptTag) {
+        scriptTag.textContent = JSON.stringify({
+          '@context': 'https://schema.org',
+          '@type': 'WebSite',
+          name: 'Popcorn Movies & TV',
+          url: 'https://cinejoy.online',
+          potentialAction: {
+            '@type': 'SearchAction',
+            target: 'https://cinejoy.online/?tab=search&q={search_term_string}',
+            'query-input': 'required name=search_term_string',
+          },
+        }, null, 2);
+      }
+    };
+  }, [media, details]);
 
   const scrollCast = (direction: 'left' | 'right') => {
     triggerHaptic('light');
@@ -169,29 +264,93 @@ export const DetailModal: React.FC<DetailModalProps> = ({ media, onClose }) => {
           </button>
         </div>
 
-        {/* Hero Backdrop Banner */}
-        <div className="relative aspect-[16/9] sm:aspect-[21/9] w-full max-h-[340px] flex-shrink-0 overflow-hidden bg-white/5 select-none">
-          <img
-            src={getBackdropUrl(details.backdrop_path, 'original')}
-            alt={title}
-            className="w-full h-full object-cover filter brightness-90"
-          />
-          <div className="absolute inset-0 bg-gradient-to-t from-[#050508] via-[#050508]/60 to-transparent" />
-          <div className="absolute inset-0 bg-gradient-to-r from-[#050508]/80 via-transparent to-[#050508]/40" />
+        {/* Hero Backdrop Banner & Trailer Embed */}
+        <div className="relative aspect-[16/9] sm:aspect-[21/9] w-full max-h-[340px] flex-shrink-0 overflow-hidden bg-black select-none">
+          {isPlayingTrailer && details.trailer_key ? (
+            <div className="relative w-full h-full">
+              <iframe
+                src={`https://www.youtube-nocookie.com/embed/${details.trailer_key}?autoplay=1&mute=${isTrailerMuted ? 1 : 0}&controls=1&rel=0&modestbranding=1&enablejsapi=1&playsinline=1`}
+                title={`${title} Official Trailer`}
+                className="w-full h-full border-0"
+                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                allowFullScreen
+              />
 
-          {/* Quick Play Trailer Floating Button on Hero */}
-          <div className="absolute inset-0 flex items-center justify-center">
-            <button
-              onClick={() => setActivePlayerMedia(details)}
-              type="button"
-              className="group flex items-center gap-3 px-6 py-3 rounded-2xl bg-white hover:bg-white/90 text-black font-bold text-sm tracking-wide shadow-2xl shadow-black/80 transform hover:scale-105 active:scale-95 transition-all cursor-pointer"
-            >
-              <div className="w-8 h-8 rounded-full bg-black/10 flex items-center justify-center">
-                <Play className="w-4 h-4 fill-current ml-0.5" />
+              {/* Floating Trailer Pill & Controls */}
+              <div className="absolute top-3 left-3 z-20 flex items-center gap-2">
+                <div className="px-2.5 py-1 rounded-full bg-black/80 backdrop-blur-md border border-white/20 text-white text-[11px] font-semibold flex items-center gap-1.5 shadow-lg">
+                  <span className="w-2 h-2 rounded-full bg-rose-500 animate-pulse" />
+                  <span>Trailer Playing</span>
+                </div>
+
+                <button
+                  type="button"
+                  onClick={() => {
+                    triggerHaptic('selection');
+                    setIsTrailerMuted(!isTrailerMuted);
+                  }}
+                  className="p-1.5 rounded-full bg-black/80 hover:bg-black/95 text-white border border-white/20 backdrop-blur-md transition-all active:scale-95 cursor-pointer shadow-lg"
+                  title={isTrailerMuted ? "Unmute audio" : "Mute audio"}
+                  aria-label={isTrailerMuted ? "Unmute audio" : "Mute audio"}
+                >
+                  {isTrailerMuted ? <VolumeX className="w-3.5 h-3.5" /> : <Volume2 className="w-3.5 h-3.5 text-cyan-400" />}
+                </button>
               </div>
-              <span>WATCH NOW</span>
-            </button>
-          </div>
+
+              {/* Backdrop Toggle on upper right */}
+              <div className="absolute top-3 right-16 z-20">
+                <button
+                  type="button"
+                  onClick={() => {
+                    triggerHaptic('light');
+                    setIsPlayingTrailer(false);
+                  }}
+                  className="px-2.5 py-1 rounded-full bg-black/80 hover:bg-white/20 text-white/90 hover:text-white border border-white/20 backdrop-blur-md text-[11px] font-medium transition-all active:scale-95 cursor-pointer shadow-lg"
+                >
+                  Show Backdrop
+                </button>
+              </div>
+            </div>
+          ) : (
+            <>
+              <img
+                src={getBackdropUrl(details.backdrop_path, 'original')}
+                alt={title}
+                className="w-full h-full object-cover filter brightness-90"
+              />
+              <div className="absolute inset-0 bg-gradient-to-t from-[#050508] via-[#050508]/60 to-transparent" />
+              <div className="absolute inset-0 bg-gradient-to-r from-[#050508]/80 via-transparent to-[#050508]/40" />
+
+              {/* Quick Play Trailer / Stream Floating Button on Hero */}
+              <div className="absolute inset-0 flex items-center justify-center gap-3">
+                <button
+                  onClick={() => setActivePlayerMedia(details)}
+                  type="button"
+                  className="group flex items-center gap-2.5 px-5 py-2.5 sm:px-6 sm:py-3 rounded-2xl bg-white hover:bg-white/90 text-black font-bold text-xs sm:text-sm tracking-wide shadow-2xl shadow-black/80 transform hover:scale-105 active:scale-95 transition-all cursor-pointer"
+                >
+                  <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-full bg-black/10 flex items-center justify-center">
+                    <Play className="w-3.5 h-3.5 sm:w-4 sm:h-4 fill-current ml-0.5" />
+                  </div>
+                  <span>WATCH NOW</span>
+                </button>
+
+                {details.trailer_key && (
+                  <button
+                    onClick={() => {
+                      triggerHaptic('medium');
+                      trackTrailerPlay(details);
+                      setIsPlayingTrailer(true);
+                    }}
+                    type="button"
+                    className="group flex items-center gap-2 px-4 py-2.5 sm:px-5 sm:py-3 rounded-2xl bg-black/70 hover:bg-black/90 text-white border border-white/20 font-bold text-xs sm:text-sm tracking-wide shadow-2xl backdrop-blur-md transform hover:scale-105 active:scale-95 transition-all cursor-pointer"
+                  >
+                    <Film className="w-4 h-4 text-amber-400" />
+                    <span>TRAILER</span>
+                  </button>
+                )}
+              </div>
+            </>
+          )}
         </div>
 
         {/* Body Content */}
@@ -283,6 +442,27 @@ export const DetailModal: React.FC<DetailModalProps> = ({ media, onClose }) => {
                   {inWatchlist ? <Check className="w-4 h-4 text-emerald-400" /> : <Plus className="w-4 h-4" />}
                   <span>{inWatchlist ? 'In Library' : 'Add to Watchlist'}</span>
                 </button>
+
+                {details.trailer_key && (
+                  <button
+                    onClick={() => {
+                      triggerHaptic('selection');
+                      if (!isPlayingTrailer) {
+                        trackTrailerPlay(details);
+                      }
+                      setIsPlayingTrailer(!isPlayingTrailer);
+                    }}
+                    type="button"
+                    className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs sm:text-sm font-semibold border transition-all active:scale-95 cursor-pointer ${
+                      isPlayingTrailer
+                        ? 'bg-rose-500/20 text-rose-300 border-rose-500/40'
+                        : 'bg-white/5 hover:bg-white/10 text-white border-white/10'
+                    }`}
+                  >
+                    <Film className="w-4 h-4 text-amber-400" />
+                    <span>{isPlayingTrailer ? 'Hide Trailer' : 'Watch Trailer'}</span>
+                  </button>
+                )}
 
                 <button
                   onClick={() => toggleFavorite(details.id)}

@@ -20,8 +20,25 @@ import firebaseConfig from '../../firebase-applet-config.json';
 // Initialize or reuse Firebase App instance
 export const app = getApps().length === 0 ? initializeApp(firebaseConfig) : getApp();
 
-// Initialize Firestore with custom database ID
-export const db: Firestore = getFirestore(app, firebaseConfig.firestoreDatabaseId);
+// Initialize Firestore with custom database ID or fallback
+function initializeFirestoreInstance(): Firestore {
+  try {
+    if (firebaseConfig.firestoreDatabaseId) {
+      return getFirestore(app, firebaseConfig.firestoreDatabaseId);
+    }
+    return getFirestore(app);
+  } catch (err) {
+    console.warn('Initial getFirestore with databaseId failed, falling back to default database:', err);
+    try {
+      return getFirestore(app);
+    } catch (fallbackErr) {
+      console.error('getFirestore fallback error:', fallbackErr);
+      throw fallbackErr;
+    }
+  }
+}
+
+export const db: Firestore = initializeFirestoreInstance();
 
 // Initialize Firebase Auth & Providers
 export const auth = getAuth(app);
@@ -108,6 +125,10 @@ export function handleFirestoreError(error: unknown, operationType: OperationTyp
  */
 export async function testFirestoreConnection(): Promise<boolean> {
   try {
+    if (!db) {
+      console.warn('Firestore instance not available for connection test');
+      return false;
+    }
     await getDocFromServer(doc(db, 'test', 'connection'));
     console.log('Firestore connection verified successfully.');
     return true;
@@ -116,6 +137,7 @@ export async function testFirestoreConnection(): Promise<boolean> {
       console.warn('Firestore is currently running offline or connecting...');
       return false;
     }
+    console.warn('Firestore connection check notice:', error instanceof Error ? error.message : error);
     // Expected non-fatal if 'test/connection' doc doesn't exist yet
     return true;
   }

@@ -10,6 +10,27 @@ export default defineConfig(() => {
       alias: {
         '@': path.resolve(__dirname, '.'),
       },
+      dedupe: [
+        'firebase',
+        'firebase/app',
+        'firebase/auth',
+        'firebase/firestore',
+        'firebase/analytics',
+        '@firebase/app',
+        '@firebase/auth',
+        '@firebase/firestore',
+        '@firebase/analytics',
+        '@firebase/component',
+        '@firebase/util',
+      ],
+    },
+    optimizeDeps: {
+      include: [
+        'firebase/app',
+        'firebase/auth',
+        'firebase/firestore',
+        'firebase/analytics',
+      ],
     },
     server: {
       allowedHosts: [
@@ -17,6 +38,12 @@ export default defineConfig(() => {
         '.popcornmovies.online',
         'bingebox.work',
         '.bingebox.work',
+        'cinejoy.online',
+        '.cinejoy.online',
+        'Cinejoy.online',
+        '.Cinejoy.online',
+        'flixhq.ink',
+        '.flixhq.ink',
         'localhost',
         '127.0.0.1',
       ],

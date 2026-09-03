@@ -86,6 +86,7 @@ export interface AppSettings {
   glassTint?: GlassmorphismTint; // Dynamic Glassmorphism tint & background glow (Violet, Emerald, Rose, etc.)
   autoPlayTrailers: boolean;
   streamQuality: '1080p' | '4K' | '720p';
+  defaultProvider?: string; // Default streaming engine (cinemaos, vidking, vidlink, etc.)
   // VidCore Player Settings & Parameters
   autoplayNextEpisode?: boolean; // Autoplay next TV episode with 10s countdown
   autoplayStream?: boolean; // VidCore autoplay parameter

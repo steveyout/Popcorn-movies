@@ -36,12 +36,18 @@
     <!-- Primary SEO Meta Tags -->
     <title>Popcorn — Watch Trailers, Discover Movies & TV Shows</title>
     <meta name="title" content="Popcorn — Watch Trailers, Discover Movies & TV Shows" />
-    <meta name="description" content="Discover top trending movies, binge-worthy TV series, 4K official trailers, and TMDB user ratings with Popcorn — the ultimate frosted glass cinema streaming experience." />
-    <meta name="keywords" content="Popcorn, movies, cinema, TV shows, watch trailers, TMDB ratings, stream movies, top 10 movies, film discovery, cinema app, PWA movies" />
+    <meta name="description" content="Discover top trending movies, binge-worthy TV series, 4K official trailers, and TMDB user ratings with Popcorn (Cinejoy.online & flixhq.ink) — the ultimate frosted glass cinema streaming experience." />
+    <meta name="keywords" content="Popcorn, Cinejoy, Cinejoy.online, FlixHQ, flixhq.ink, movies, cinema, TV shows, watch trailers, TMDB ratings, stream movies, top 10 movies, film discovery, cinema app, PWA movies" />
     <meta name="robots" content="index, follow, max-image-preview:large, max-snippet:-1, max-video-preview:-1" />
     <meta name="googlebot" content="index, follow" />
     <meta name="bingbot" content="index, follow" />
     <meta name="theme-color" content="#050508" />
+
+    <!-- Brand Network & Domain References -->
+    <link rel="canonical" href="https://cinejoy.online/" />
+    <link rel="alternate" href="https://flixhq.ink/" hreflang="x-default" />
+    <meta name="brand" content="Popcorn | Cinejoy | FlixHQ" />
+    <meta property="al:web:url" content="https://cinejoy.online" />
 
     <!-- AI Agent & LLM Context References -->
     <link rel="alternate" type="text/markdown" href="/llms.txt" title="LLMs.txt Specification" />
@@ -65,29 +71,35 @@
 
     <!-- Open Graph / Facebook -->
     <meta property="og:type" content="website" />
-    <meta property="og:site_name" content="Popcorn" />
+    <meta property="og:site_name" content="Popcorn | Cinejoy | FlixHQ" />
     <meta property="og:title" content="Popcorn — Watch Trailers, Discover Movies & TV Shows" />
-    <meta property="og:description" content="Discover top trending movies, binge-worthy TV series, 4K official trailers, and TMDB user ratings on Popcorn." />
+    <meta property="og:description" content="Discover top trending movies, binge-worthy TV series, 4K official trailers, and TMDB user ratings on Popcorn (cinejoy.online & flixhq.ink)." />
     <meta property="og:image" content="/favicon.svg" />
     <meta property="og:image:alt" content="Popcorn Cinema Discovery App" />
 
     <!-- Twitter -->
     <meta name="twitter:card" content="summary_large_image" />
     <meta name="twitter:title" content="Popcorn — Watch Trailers, Discover Movies & TV Shows" />
-    <meta name="twitter:description" content="Discover top trending movies, binge-worthy TV series, 4K official trailers, and TMDB user ratings on Popcorn." />
+    <meta name="twitter:description" content="Discover top trending movies, binge-worthy TV series, 4K official trailers, and TMDB user ratings on Popcorn (cinejoy.online & flixhq.ink)." />
     <meta name="twitter:image" content="/favicon.svg" />
 
-    <!-- Search Engine Schema.org JSON-LD -->
-    <script type="application/ld+json">
+    <!-- Search Engine Schema.org JSON-LD (Web Application & Navigation) -->
+    <script id="schema-static-jsonld" type="application/ld+json">
       [
         {
           "@context": "https://schema.org",
           "@type": "WebApplication",
           "name": "Popcorn",
+          "alternateName": ["Cinejoy", "FlixHQ"],
+          "url": "https://cinejoy.online",
+          "sameAs": [
+            "https://cinejoy.online",
+            "https://flixhq.ink"
+          ],
           "applicationCategory": "EntertainmentApplication",
           "genre": "Movies & TV",
           "operatingSystem": "All",
-          "description": "A frosted-glass cinematic movie and TV series discovery Progressive Web App powered by TMDB.",
+          "description": "A frosted-glass cinematic movie and TV series discovery Progressive Web App powered by TMDB, Cinejoy.online and flixhq.ink.",
           "offers": {
             "@type": "Offer",
             "price": "0",
@@ -106,6 +118,21 @@
           "url": ["/?tab=home", "/?tab=browse&type=movie", "/?tab=browse&type=tv", "/?tab=search", "/?tab=library"]
         }
       ]
+    </script>
+
+    <!-- Dynamic Detail Page JSON-LD Target for 'Movie' & 'TVSeries' Schemas -->
+    <script id="schema-dynamic-detail-jsonld" type="application/ld+json">
+      {
+        "@context": "https://schema.org",
+        "@type": "WebSite",
+        "name": "Popcorn Movies & TV",
+        "url": "https://cinejoy.online",
+        "potentialAction": {
+          "@type": "SearchAction",
+          "target": "https://cinejoy.online/?tab=search&q={search_term_string}",
+          "query-input": "required name=search_term_string"
+        }
+      }
     </script>
   </head>
   <body class="bg-[#050508] text-slate-100 antialiased selection:bg-amber-500 selection:text-black">

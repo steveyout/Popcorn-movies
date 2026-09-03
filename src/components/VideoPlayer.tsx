@@ -22,7 +22,9 @@ import {
   Info,
   Sun,
   Eye,
-  Layers
+  Layers,
+  Server,
+  ChevronDown
 } from 'lucide-react';
 import { MediaItem } from '../types';
 import { getBackdropUrl } from '../services/tmdb';
@@ -30,7 +32,9 @@ import { useApp } from '../context/AppContext';
 import { triggerHaptic } from '../utils/haptics';
 import { 
   getEmbedUrl, 
-  THEME_COLOR_MAP 
+  THEME_COLOR_MAP,
+  providers,
+  DEFAULT_PROVIDER_ID
 } from '../config/providers';
 import { 
   extractAmbientPalette, 
@@ -62,6 +66,18 @@ export const VideoPlayer: React.FC<VideoPlayerProps> = ({ media, onClose }) => {
 
   // Playback state tracked via VidCore postMessage events
   const [playerState, setPlayerState] = useState<'loading' | 'playing' | 'paused' | 'ended'>('loading');
+
+  // Selected Streaming Server Provider (defaulting to user settings or cinemaos)
+  const [selectedProviderId, setSelectedProviderId] = useState<string>(
+    settings.defaultProvider || DEFAULT_PROVIDER_ID
+  );
+  const [isServerMenuOpen, setIsServerMenuOpen] = useState(false);
+
+  const currentProvider = useMemo(() => {
+    return providers.find((p) => p.id === selectedProviderId) || 
+           providers.find((p) => p.id === DEFAULT_PROVIDER_ID) || 
+           providers[0];
+  }, [selectedProviderId]);
   
   // 10-second Next Episode Countdown Overlay State
   const [countdown, setCountdown] = useState<number | null>(null);
@@ -74,7 +90,7 @@ export const VideoPlayer: React.FC<VideoPlayerProps> = ({ media, onClose }) => {
   const isTV = media.media_type === 'tv' || Boolean(media.first_air_date) || Boolean(media.number_of_seasons);
   const trailerKey = media.trailer_key || 'Way9Dexny3w';
 
-  // Compute theme hex for VidCore embed URL
+  // Compute theme hex for embed URL
   const currentThemeHex = THEME_COLOR_MAP[settings.accentColor] || THEME_COLOR_MAP.cyan || '06B6D4';
 
   // Backdrop / Poster Image URL for dominant color ambient light extraction
@@ -114,9 +130,9 @@ export const VideoPlayer: React.FC<VideoPlayerProps> = ({ media, onClose }) => {
     }
   }, [media, selectedSeason, selectedEpisode]);
 
-  // Generate dynamic VidCore embed URL with full parameter support
+  // Generate dynamic stream embed URL with server support
   const embedUrl = getEmbedUrl(
-    'vidcore',
+    selectedProviderId,
     isTV ? 'tv' : 'movie',
     media.id,
     selectedSeason,
@@ -387,7 +403,7 @@ export const VideoPlayer: React.FC<VideoPlayerProps> = ({ media, onClose }) => {
                 <span>•</span>
                 <span className="flex items-center gap-1">
                   <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
-                  <span className="text-emerald-400 font-medium">VidCore Engine</span>
+                  <span className="text-emerald-400 font-medium">{currentProvider.name}</span>
                 </span>
                 {isTV && (
                   <>
@@ -433,6 +449,76 @@ export const VideoPlayer: React.FC<VideoPlayerProps> = ({ media, onClose }) => {
               </button>
             )}
 
+            {/* Server Switcher Dropdown */}
+            <div className="relative">
+              <button
+                type="button"
+                onClick={() => {
+                  triggerHaptic('light');
+                  setIsServerMenuOpen(prev => !prev);
+                }}
+                className="px-2.5 py-1.5 rounded-xl bg-white/10 hover:bg-white/20 border border-white/10 text-xs font-semibold text-white flex items-center gap-1.5 transition-all cursor-pointer shadow-sm"
+                title="Switch Streaming Server Engine"
+                aria-label="Switch Streaming Server"
+              >
+                <Server className="w-3.5 h-3.5 text-cyan-400" />
+                <span className="hidden sm:inline font-medium">{currentProvider.name}</span>
+                <span className="sm:hidden font-medium">{currentProvider.name.split(' ')[0]} {currentProvider.name.split(' ')[1]}</span>
+                <ChevronDown className="w-3 h-3 text-white/50" />
+              </button>
+
+              {/* Server Switcher Popover Menu */}
+              {isServerMenuOpen && (
+                <div className="absolute right-0 top-full mt-2 w-64 max-h-80 overflow-y-auto bg-black/95 border border-cyan-500/30 rounded-2xl shadow-2xl backdrop-blur-2xl p-2 z-50 animate-in fade-in slide-in-from-top-2 duration-150">
+                  <div className="px-2 py-1.5 border-b border-white/10 flex items-center justify-between">
+                    <span className="text-[11px] font-bold uppercase tracking-wider text-white/60 flex items-center gap-1.5">
+                      <Server className="w-3 h-3 text-cyan-400" />
+                      <span>Select Stream Server</span>
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => setIsServerMenuOpen(false)}
+                      className="text-white/40 hover:text-white p-0.5"
+                    >
+                      <X className="w-3 h-3" />
+                    </button>
+                  </div>
+                  <div className="py-1 space-y-1">
+                    {providers.map((p) => {
+                      const isSelected = p.id === selectedProviderId;
+                      return (
+                        <button
+                          key={p.id}
+                          type="button"
+                          onClick={() => {
+                            triggerHaptic('success');
+                            setSelectedProviderId(p.id);
+                            setIsServerMenuOpen(false);
+                            showToast(`Connected to ${p.name}`);
+                          }}
+                          className={`w-full flex items-center justify-between px-2.5 py-2 rounded-xl text-xs font-medium transition-all text-left cursor-pointer ${
+                            isSelected
+                              ? 'bg-gradient-to-r from-cyan-500 to-blue-600 text-white font-bold shadow-md'
+                              : 'hover:bg-white/10 text-white/80 hover:text-white'
+                          }`}
+                        >
+                          <div className="flex items-center gap-2">
+                            <span className={`w-2 h-2 rounded-full ${isSelected ? 'bg-white' : 'bg-white/30'}`} />
+                            <span>{p.name}</span>
+                          </div>
+                          {p.id === DEFAULT_PROVIDER_ID && (
+                            <span className="text-[9px] px-1.5 py-0.5 rounded bg-white/20 uppercase font-bold tracking-wider">
+                              Default
+                            </span>
+                          )}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
+            </div>
+
             {/* Stream / Trailer Toggle */}
             <div className="flex bg-white/10 rounded-xl p-0.5 border border-white/10 text-xs backdrop-blur-md">
               <button
@@ -473,7 +559,7 @@ export const VideoPlayer: React.FC<VideoPlayerProps> = ({ media, onClose }) => {
                 setIsSettingsOpen(true);
               }}
               className="p-2 rounded-full bg-white/10 hover:bg-white/20 text-white/80 hover:text-white transition-all cursor-pointer"
-              title="Player & VidCore Settings"
+              title="Player & Stream Settings"
               aria-label="Player Settings"
             >
               <SlidersHorizontal className="w-4 h-4" />
@@ -496,10 +582,10 @@ export const VideoPlayer: React.FC<VideoPlayerProps> = ({ media, onClose }) => {
         <div className="relative flex-1 w-full h-full bg-[#050508] flex items-center justify-center overflow-hidden">
           {activeTab === 'stream' ? (
             <div className="w-full h-full relative flex items-center justify-center bg-black">
-              {/* Active VidCore Stream Iframe */}
+              {/* Active Stream Iframe */}
               {selectedEpisode > 0 && (
                 <iframe
-                  key={`vidcore-${media.id}-${selectedSeason}-${selectedEpisode}-${settings.accentColor}-${settings.playerLanguage}`}
+                  key={`stream-${selectedProviderId}-${media.id}-${selectedSeason}-${selectedEpisode}-${settings.accentColor}-${settings.playerLanguage}`}
                   src={embedUrl}
                   className="w-full h-full border-0"
                   allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share; fullscreen"
@@ -613,12 +699,21 @@ export const VideoPlayer: React.FC<VideoPlayerProps> = ({ media, onClose }) => {
         {activeTab === 'stream' && (
           <div className="px-4 py-2.5 bg-black/90 border-t border-white/10 backdrop-blur-xl flex flex-wrap items-center justify-between gap-3 text-xs">
             
-            {/* VidCore Engine Identity (Exclusive Single Provider) */}
+            {/* Stream Server Engine Switcher & Indicator */}
             <div className="flex items-center gap-2">
-              <div className="flex items-center gap-2 px-3 py-1 rounded-xl bg-cyan-500/10 border border-cyan-500/25 text-cyan-300 font-semibold text-xs">
-                <span className="w-2 h-2 rounded-full bg-cyan-400 shadow-[0_0_8px_rgba(6,182,212,0.8)]" />
-                <span>VidCore Engine</span>
-              </div>
+              <button
+                type="button"
+                onClick={() => {
+                  triggerHaptic('light');
+                  setIsServerMenuOpen(prev => !prev);
+                }}
+                className="flex items-center gap-2 px-3 py-1 rounded-xl bg-cyan-500/10 hover:bg-cyan-500/20 border border-cyan-500/25 text-cyan-300 font-semibold text-xs transition-all cursor-pointer"
+                title="Click to Switch Stream Server"
+              >
+                <Server className="w-3.5 h-3.5 text-cyan-400" />
+                <span>{currentProvider.name}</span>
+                <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse ml-0.5" />
+              </button>
               <span className="hidden sm:inline text-[11px] text-white/40">
                 Audio: <span className="text-white/80 font-medium">{settings.playerLanguage?.toUpperCase() || 'EN'}</span>
               </span>
