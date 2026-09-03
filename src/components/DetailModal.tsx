@@ -18,7 +18,9 @@ import {
   ChevronLeft,
   ChevronRight,
   Volume2,
-  VolumeX
+  VolumeX,
+  Server,
+  ChevronDown
 } from 'lucide-react';
 import { MediaItem, CastMember } from '../types';
 import { getImageUrl, getBackdropUrl, formatYear, formatDuration, tmdbService } from '../services/tmdb';
@@ -27,6 +29,7 @@ import { MovieCard } from './MovieCard';
 import { RatingRing } from './RatingRing';
 import { triggerHaptic } from '../utils/haptics';
 import { trackMediaView, trackTrailerPlay } from '../services/analytics';
+import { providers, DEFAULT_PROVIDER_ID } from '../config/providers';
 
 interface DetailModalProps {
   media: MediaItem;
@@ -42,6 +45,7 @@ export const DetailModal: React.FC<DetailModalProps> = ({ media, onClose }) => {
     toggleFavorite, 
     toggleDownload,
     settings,
+    updateSettings,
     showToast 
   } = useApp();
 
@@ -51,8 +55,12 @@ export const DetailModal: React.FC<DetailModalProps> = ({ media, onClose }) => {
   const [activeTab, setActiveTab] = useState<'overview' | 'cast' | 'reviews'>('overview');
   const [isPlayingTrailer, setIsPlayingTrailer] = useState<boolean>(false);
   const [isTrailerMuted, setIsTrailerMuted] = useState<boolean>(true);
+  const [isServerMenuOpen, setIsServerMenuOpen] = useState(false);
   const castScrollRef = useRef<HTMLDivElement>(null);
   const similarScrollRef = useRef<HTMLDivElement>(null);
+
+  const selectedServerId = settings.defaultProvider || DEFAULT_PROVIDER_ID;
+  const currentProvider = providers.find(p => p.id === selectedServerId) || providers[0];
 
   const inWatchlist = isInWatchlist(media.id);
   const watchlistItem = watchlist.find(w => w.id === media.id);
@@ -429,6 +437,79 @@ export const DetailModal: React.FC<DetailModalProps> = ({ media, onClose }) => {
                   <Play className="w-4 h-4 fill-current" />
                   <span>Stream Full Title</span>
                 </button>
+
+                {/* Streaming Server Switcher */}
+                <div className="relative">
+                  <button
+                    onClick={() => {
+                      triggerHaptic('light');
+                      setIsServerMenuOpen((prev) => !prev);
+                    }}
+                    type="button"
+                    className="flex items-center gap-2 px-3.5 py-2.5 rounded-xl bg-cyan-500/15 hover:bg-cyan-500/25 border border-cyan-400/40 text-cyan-200 text-xs sm:text-sm font-bold shadow-md transition-all active:scale-95 cursor-pointer"
+                    title="Switch Streaming Server Engine (11 Servers Available)"
+                  >
+                    <Server className="w-4 h-4 text-cyan-400" />
+                    <span>Server: <strong className="text-white font-extrabold">{currentProvider.name}</strong></span>
+                    <ChevronDown className="w-3.5 h-3.5 text-cyan-400/80" />
+                  </button>
+
+                  {isServerMenuOpen && (
+                    <div className="absolute left-0 top-full mt-2 w-72 max-h-80 overflow-y-auto bg-[#0b0c16]/98 border border-cyan-500/40 rounded-2xl shadow-2xl backdrop-blur-2xl p-2 z-50 animate-in fade-in slide-in-from-top-2 duration-150">
+                      <div className="px-2.5 py-2 border-b border-white/10 flex items-center justify-between">
+                        <span className="text-[11px] font-bold uppercase tracking-wider text-white/80 flex items-center gap-1.5">
+                          <Server className="w-3.5 h-3.5 text-cyan-400" />
+                          <span>Stream Server ({providers.length})</span>
+                        </span>
+                        <button
+                          type="button"
+                          onClick={() => setIsServerMenuOpen(false)}
+                          className="text-white/40 hover:text-white p-1 rounded-full hover:bg-white/10 cursor-pointer"
+                        >
+                          <X className="w-3.5 h-3.5" />
+                        </button>
+                      </div>
+                      <div className="py-1 space-y-1">
+                        {providers.map((p, idx) => {
+                          const isSelected = p.id === selectedServerId;
+                          return (
+                            <button
+                              key={p.id}
+                              type="button"
+                              onClick={() => {
+                                triggerHaptic('selection');
+                                updateSettings({ defaultProvider: p.id });
+                                setIsServerMenuOpen(false);
+                                showToast(`Stream Server set to ${p.name}`);
+                              }}
+                              className={`w-full flex items-center justify-between px-3 py-2 rounded-xl text-xs font-medium transition-all text-left cursor-pointer ${
+                                isSelected
+                                  ? 'bg-gradient-to-r from-cyan-500 to-blue-600 text-white font-bold shadow-md'
+                                  : 'hover:bg-white/10 text-white/80 hover:text-white'
+                              }`}
+                            >
+                              <div className="flex items-center gap-2.5">
+                                <span className={`w-2 h-2 rounded-full ${isSelected ? 'bg-white' : 'bg-white/30'}`} />
+                                <div>
+                                  <div className="font-semibold text-white flex items-center gap-1.5">
+                                    <span>{p.name}</span>
+                                    {p.id === DEFAULT_PROVIDER_ID && (
+                                      <span className="text-[8px] px-1 py-0.2 rounded bg-white/20 uppercase font-bold tracking-wider">
+                                        Default
+                                      </span>
+                                    )}
+                                  </div>
+                                  <div className="text-[10px] text-white/40">Mirror #{idx + 1}</div>
+                                </div>
+                              </div>
+                              {isSelected && <Check className="w-3.5 h-3.5 text-white" />}
+                            </button>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  )}
+                </div>
 
                 <button
                   onClick={() => toggleWatchlist(details)}
