@@ -16,10 +16,12 @@ import {
   Sparkles 
 } from 'lucide-react';
 import { MediaItem } from '../types';
-import { getBackdropUrl, getImageUrl, formatYear, formatDuration, getGenreNames } from '../services/tmdb';
+import { getBackdropUrl, getImageUrl, formatYear, formatDuration, getGenreNames, handleTmdbImageError } from '../services/tmdb';
+import { FALLBACK_BACKDROP } from '../services/curatedData';
 import { useApp } from '../context/AppContext';
 import { RatingRing } from './RatingRing';
 import { triggerHaptic } from '../utils/haptics';
+import { getMediaPath } from '@/src/lib/mediaSeo';
 
 interface TrendingHeroCarouselProps {
   items: MediaItem[];
@@ -116,6 +118,7 @@ export const TrendingHeroCarousel: React.FC<TrendingHeroCarouselProps> = ({ item
             key={activeItem.id}
             src={getBackdropUrl(activeItem.backdrop_path, 'original')}
             alt={title}
+            onError={(event) => handleTmdbImageError(event, FALLBACK_BACKDROP)}
             className="w-full h-full object-cover filter brightness-[0.8] contrast-[1.08] transition-all duration-700 ease-out transform scale-105"
           />
           {/* Layered Cinematic Vignettes & Gradients */}
@@ -199,9 +202,19 @@ export const TrendingHeroCarousel: React.FC<TrendingHeroCarouselProps> = ({ item
           </div>
 
           {/* Hero Title */}
-          <h1 className="text-2xl sm:text-4xl lg:text-5xl font-black text-white tracking-tight drop-shadow-[0_4px_12px_rgba(0,0,0,0.9)] line-clamp-2">
-            {title}
-          </h1>
+          <a
+            href={getMediaPath(activeItem)}
+            onClick={(event) => {
+              event.preventDefault();
+              setSelectedMedia(activeItem);
+            }}
+            className="block w-fit max-w-full"
+            aria-label={`View details for ${title}`}
+          >
+            <h1 className="text-2xl sm:text-4xl lg:text-5xl font-black text-white tracking-tight drop-shadow-[0_4px_12px_rgba(0,0,0,0.9)] line-clamp-2 hover:text-amber-200 transition-colors">
+              {title}
+            </h1>
+          </a>
 
           {/* Overview Plot Excerpt */}
           <p className="text-xs sm:text-sm text-slate-300 line-clamp-2 sm:line-clamp-3 leading-relaxed max-w-2xl drop-shadow-md">
@@ -214,6 +227,12 @@ export const TrendingHeroCarousel: React.FC<TrendingHeroCarouselProps> = ({ item
             <button
               onClick={() => {
                 triggerHaptic('medium');
+                if (typeof window !== 'undefined') {
+                  const mediaPath = getMediaPath(activeItem);
+                  if (window.location.pathname !== mediaPath) {
+                    window.history.pushState({}, '', mediaPath);
+                  }
+                }
                 setActivePlayerMedia(activeItem);
               }}
               type="button"
@@ -313,6 +332,7 @@ export const TrendingHeroCarousel: React.FC<TrendingHeroCarouselProps> = ({ item
                   <img
                     src={getImageUrl(item.poster_path, 'w200')}
                     alt={item.title || item.name}
+                    onError={handleTmdbImageError}
                     className="w-full h-full object-cover"
                   />
                   {isSelected && (

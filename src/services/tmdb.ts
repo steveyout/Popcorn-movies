@@ -12,13 +12,26 @@ export { clearTmdbCache, getTmdbCacheStats, pruneCache };
 
 const TMDB_BASE_URL = 'https://api.themoviedb.org/3';
 const IMAGE_BASE_URL = 'https://image.tmdb.org/t/p';
+const BUILT_IN_TMDB_KEY = 'addfba41d0cb5aba2ebaae12ac92b671';
 
-// Default TMDB key from environment secret or fallback
-const ENV_TMDB_KEY = (import.meta.env?.VITE_TMDB_API_KEY as string | undefined)?.trim() || 'addfba41d0cb5aba2ebaae12ac92b671';
+export const normalizeTmdbApiKey = (key: string | undefined): string => {
+  const normalized = key?.trim() || '';
+  if (
+    !normalized ||
+    normalized === 'your_tmdb_api_key_here' ||
+    normalized === 'your_tmdb_api_key' ||
+    normalized.startsWith('your_')
+  ) {
+    return BUILT_IN_TMDB_KEY;
+  }
+  return normalized;
+};
+
+const ENV_TMDB_KEY = normalizeTmdbApiKey(process.env.NEXT_PUBLIC_TMDB_API_KEY);
 let customApiKey = ENV_TMDB_KEY;
 
 export const setTmdbApiKey = (key: string) => {
-  const clean = key.trim() || ENV_TMDB_KEY;
+  const clean = normalizeTmdbApiKey(key);
   if (clean !== customApiKey) {
     customApiKey = clean;
     clearTmdbCache();
@@ -29,16 +42,30 @@ export const getTmdbApiKey = () => {
   return customApiKey || ENV_TMDB_KEY;
 };
 
+export const getDefaultTmdbApiKey = () => ENV_TMDB_KEY;
+
 export const getImageUrl = (path: string | null | undefined, size: 'w200' | 'w300' | 'w500' | 'w780' | 'original' = 'w500'): string => {
   if (!path) return FALLBACK_POSTER;
-  if (path.startsWith('http')) return path;
-  return `${IMAGE_BASE_URL}/${size}${path}`;
+  if (/^https?:\/\//i.test(path)) return path;
+  const normalizedPath = path.startsWith('/') ? path : `/${path}`;
+  return `${IMAGE_BASE_URL}/${size}${normalizedPath}`;
 };
 
 export const getBackdropUrl = (path: string | null | undefined, size: 'w780' | 'w1280' | 'original' = 'w1280'): string => {
   if (!path) return FALLBACK_BACKDROP;
-  if (path.startsWith('http')) return path;
-  return `${IMAGE_BASE_URL}/${size}${path}`;
+  if (/^https?:\/\//i.test(path)) return path;
+  const normalizedPath = path.startsWith('/') ? path : `/${path}`;
+  return `${IMAGE_BASE_URL}/${size}${normalizedPath}`;
+};
+
+export const handleTmdbImageError = (
+  event: { currentTarget: HTMLImageElement },
+  fallbackUrl: string = FALLBACK_POSTER,
+) => {
+  const image = event.currentTarget;
+  if (image.dataset.fallbackApplied === 'true') return;
+  image.dataset.fallbackApplied = 'true';
+  image.src = fallbackUrl;
 };
 
 export const formatYear = (dateStr?: string): string => {

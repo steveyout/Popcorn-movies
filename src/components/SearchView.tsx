@@ -183,9 +183,11 @@ export const SearchView: React.FC = () => {
           {loading ? (
             <DiscoverGridSkeleton />
           ) : results.length > 0 ? (
-            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-4 sm:gap-5">
+            <div className="grid min-w-0 grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-x-4 gap-y-8 sm:gap-x-5 sm:gap-y-10">
               {results.map((item) => (
-                <MovieCard key={item.id} item={item} size="md" className="w-full" />
+                <div key={`${item.media_type}-${item.id}`} className="min-w-0 flex justify-center">
+                  <MovieCard item={item} size="md" className="w-full min-w-0 max-w-[190px]" />
+                </div>
               ))}
             </div>
           ) : (

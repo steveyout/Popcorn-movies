@@ -2,9 +2,10 @@ import React from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { Plus, Check, Play, Info } from 'lucide-react';
 import { MediaItem } from '../types';
-import { getImageUrl, formatYear } from '../services/tmdb';
+import { getImageUrl, formatYear, handleTmdbImageError } from '../services/tmdb';
 import { useApp } from '../context/AppContext';
 import { RatingRing } from './RatingRing';
+import { getMediaPath } from '@/src/lib/mediaSeo';
 
 interface MovieCardProps {
   item: MediaItem;
@@ -34,6 +35,8 @@ export const MovieCard: React.FC<MovieCardProps> = ({
     md: 'w-[155px] sm:w-[175px] md:w-[190px]',
     lg: 'w-[180px] sm:w-[210px] md:w-[230px]',
   }[size];
+  const isFluid = className.split(/\s+/).includes('w-full');
+  const resolvedWidthClass = isFluid ? 'w-full' : cardWidthClass;
 
   return (
     <motion.div
@@ -41,7 +44,7 @@ export const MovieCard: React.FC<MovieCardProps> = ({
       whileHover={{ y: -7, scale: 1.03 }}
       whileTap={{ scale: 0.98 }}
       transition={{ duration: 0.28, ease: [0.25, 1, 0.5, 1] }}
-      className={`group relative flex-shrink-0 flex flex-col cursor-pointer select-none ${cardWidthClass} ${className}`}
+      className={`group relative flex-shrink-0 flex flex-col cursor-pointer select-none ${resolvedWidthClass} ${className}`}
       onClick={() => setSelectedMedia(item)}
     >
       {/* Poster Image Container with Glassmorphic Glow & Scale */}
@@ -52,12 +55,23 @@ export const MovieCard: React.FC<MovieCardProps> = ({
         {/* Diagonal Light Sheen Glaze on Hover */}
         <div className="absolute -inset-full bg-gradient-to-r from-transparent via-white/10 to-transparent transform -rotate-45 translate-x-[-150%] group-hover:translate-x-[150%] transition-transform duration-1000 ease-in-out pointer-events-none z-10" />
 
-        <img
-          src={getImageUrl(item.poster_path, 'w500')}
-          alt={title}
-          loading="lazy"
-          className="w-full h-full object-cover transition-transform duration-700 ease-out group-hover:scale-110"
-        />
+        <a
+          href={getMediaPath(item)}
+          onClick={(event) => {
+            event.preventDefault();
+            setSelectedMedia(item);
+          }}
+          aria-label={`View ${title}`}
+          className="block h-full w-full"
+        >
+          <img
+            src={getImageUrl(item.poster_path, 'w500')}
+            alt={title}
+            loading="lazy"
+            onError={handleTmdbImageError}
+            className="w-full h-full object-cover transition-transform duration-700 ease-out group-hover:scale-110"
+          />
+        </a>
 
         {/* Subtle Vignette & Gradient Overlays */}
         <div className="absolute inset-0 bg-gradient-to-t from-[#050508]/95 via-transparent to-[#050508]/30 pointer-events-none z-10" />

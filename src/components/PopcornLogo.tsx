@@ -1,5 +1,5 @@
 import React, { useMemo } from 'react';
-import { getDomainBranding } from '../utils/domainBranding';
+import { getDomainBranding } from '@/src/lib/domainBranding';
 import { Tv, Film } from 'lucide-react';
 
 interface PopcornLogoProps {

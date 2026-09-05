@@ -352,15 +352,15 @@ export const DiscoverView: React.FC<DiscoverViewProps> = ({ initialGenreId }) =>
             variants={gridContainerVariants}
             initial="hidden"
             animate="visible"
-            className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-4 sm:gap-5"
+            className="grid min-w-0 grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-x-4 gap-y-8 sm:gap-x-5 sm:gap-y-10"
           >
             {results.map((item, index) => (
               <motion.div
                 key={`${item.id}-${index}`}
                 variants={gridItemVariants}
-                className="w-full flex justify-center"
+                className="w-full min-w-0 flex justify-center"
               >
-                <MovieCard item={item} size="md" className="w-full" />
+                <MovieCard item={item} size="md" className="w-full min-w-0 max-w-[190px]" />
               </motion.div>
             ))}
           </motion.div>
@@ -410,4 +410,3 @@ export const DiscoverView: React.FC<DiscoverViewProps> = ({ initialGenreId }) =>
     </div>
   );
 };
-

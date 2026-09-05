@@ -1,6 +1,0 @@
-{
-  "name": "Popcorn",
-  "description": "A cinema streaming and discovery app powered by TMDB, featuring real-time Firebase Authentication, Cloud Firestore cross-device watchlist sync, analytics tracking, and embedded playback.",
-  "requestFramePermissions": [],
-  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
-}

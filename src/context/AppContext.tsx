@@ -1,17 +1,20 @@
+'use client';
+
 import React, { createContext, useContext, useState, useEffect } from 'react';
-import { MediaItem, NavTab, WatchlistItem, AppSettings } from '../types';
-import { setTmdbApiKey } from '../services/tmdb';
-import { triggerHaptic } from '../utils/haptics';
-import { applyDomainSEO } from '../utils/domainBranding';
-import { auth } from '../services/firebase';
+import { MediaItem, NavTab, WatchlistItem, AppSettings } from '@/src/types';
+import { getDefaultTmdbApiKey, normalizeTmdbApiKey, setTmdbApiKey } from '@/src/services/tmdb';
+import { triggerHaptic } from '@/src/utils/haptics';
+import { DEFAULT_BRAND_CONFIG, getClientDomainBranding, DomainBrandConfig } from '@/src/lib/domainBranding';
+import { auth } from '@/src/services/firebase';
 import { 
   saveCloudWatchlistItem, 
   removeCloudWatchlistItem, 
   subscribeCloudWatchlist,
   saveCloudSettings,
   fetchCloudSettings
-} from '../services/firestoreSync';
-import { trackWatchlistAction, trackSearch, trackPageView } from '../services/analytics';
+} from '@/src/services/firestoreSync';
+import { trackWatchlistAction, trackSearch, trackPageView } from '@/src/services/analytics';
+import { getMediaPath } from '@/src/lib/mediaSeo';
 
 interface ToastMessage {
   id: string;
@@ -27,6 +30,9 @@ interface AppContextType {
   activePlayerMedia: MediaItem | null;
   setActivePlayerMedia: (media: MediaItem | null) => void;
   
+  // Brand configuration
+  brandConfig: DomainBrandConfig;
+
   // Watchlist & Library
   watchlist: WatchlistItem[];
   addToWatchlist: (item: MediaItem) => void;
@@ -61,7 +67,7 @@ interface AppContextType {
 }
 
 const DEFAULT_SETTINGS: AppSettings = {
-  tmdbApiKey: (import.meta.env?.VITE_TMDB_API_KEY as string | undefined) || 'addfba41d0cb5aba2ebaae12ac92b671',
+  tmdbApiKey: getDefaultTmdbApiKey(),
   useLiveTmdb: true,
   accentColor: 'cyan',
   glassTint: 'violet',
@@ -80,20 +86,39 @@ const DEFAULT_SETTINGS: AppSettings = {
 
 const AppContext = createContext<AppContextType | undefined>(undefined);
 
+// Try to get initial brand config
+const getInitialBrandConfig = (): DomainBrandConfig => {
+  if (typeof window !== 'undefined') {
+    return getClientDomainBranding();
+  }
+  return DEFAULT_BRAND_CONFIG;
+};
+
 export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const [activeTab, setActiveTab] = useState<NavTab>('home');
+  const [activeTab, setActiveTab] = useState<NavTab>(() => {
+    if (typeof window === 'undefined') return 'home';
+    const path = window.location.pathname;
+    if (path === '/discover') return 'browse';
+    if (path === '/search') return 'search';
+    if (path === '/library') return 'library';
+    return 'home';
+  });
   const [selectedMedia, setSelectedMedia] = useState<MediaItem | null>(null);
   const [activePlayerMedia, setActivePlayerMedia] = useState<MediaItem | null>(null);
   const [isSettingsOpen, setIsSettingsOpen] = useState<boolean>(false);
   const [isDrawerOpen, setIsDrawerOpen] = useState<boolean>(false);
   const [searchQuery, setSearchQuery] = useState<string>('');
   const [toasts, setToasts] = useState<ToastMessage[]>([]);
+  const [brandConfig, setBrandConfig] = useState<DomainBrandConfig>(getInitialBrandConfig);
 
   // Local storage for Watchlist
   const [watchlist, setWatchlist] = useState<WatchlistItem[]>(() => {
     try {
-      const saved = localStorage.getItem('popcorn_watchlist');
-      return saved ? JSON.parse(saved) : [];
+      if (typeof window !== 'undefined') {
+        const saved = localStorage.getItem('popcorn_watchlist');
+        return saved ? JSON.parse(saved) : [];
+      }
+      return [];
     } catch {
       return [];
     }
@@ -102,8 +127,11 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   // Local storage for Recent Searches
   const [recentSearches, setRecentSearches] = useState<string[]>(() => {
     try {
-      const saved = localStorage.getItem('popcorn_recent_searches');
-      return saved ? JSON.parse(saved) : ['Dune', 'Lioness', 'Stranger Things', 'Minions'];
+      if (typeof window !== 'undefined') {
+        const saved = localStorage.getItem('popcorn_recent_searches');
+        return saved ? JSON.parse(saved) : ['Dune', 'Lioness', 'Stranger Things', 'Minions'];
+      }
+      return ['Dune', 'Lioness', 'Stranger Things', 'Minions'];
     } catch {
       return ['Dune', 'Lioness', 'Stranger Things', 'Minions'];
     }
@@ -112,16 +140,36 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   // Local storage for Settings
   const [settings, setSettings] = useState<AppSettings>(() => {
     try {
-      const saved = localStorage.getItem('popcorn_settings');
-      return saved ? { ...DEFAULT_SETTINGS, ...JSON.parse(saved) } : DEFAULT_SETTINGS;
+      if (typeof window !== 'undefined') {
+        const saved = localStorage.getItem('popcorn_settings');
+        if (saved) {
+          const parsed = JSON.parse(saved) as Partial<AppSettings>;
+          return {
+            ...DEFAULT_SETTINGS,
+            ...parsed,
+            tmdbApiKey: normalizeTmdbApiKey(parsed.tmdbApiKey),
+          };
+        }
+        return DEFAULT_SETTINGS;
+      }
+      return DEFAULT_SETTINGS;
     } catch {
       return DEFAULT_SETTINGS;
     }
   });
 
+  // Update brand config on client side
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      setBrandConfig(getClientDomainBranding());
+    }
+  }, []);
+
   useEffect(() => {
     try {
-      localStorage.setItem('popcorn_watchlist', JSON.stringify(watchlist));
+      if (typeof window !== 'undefined') {
+        localStorage.setItem('popcorn_watchlist', JSON.stringify(watchlist));
+      }
     } catch (e) {
       console.error(e);
     }
@@ -129,7 +177,9 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
   useEffect(() => {
     try {
-      localStorage.setItem('popcorn_recent_searches', JSON.stringify(recentSearches));
+      if (typeof window !== 'undefined') {
+        localStorage.setItem('popcorn_recent_searches', JSON.stringify(recentSearches));
+      }
     } catch (e) {
       console.error(e);
     }
@@ -137,9 +187,11 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
   useEffect(() => {
     try {
-      localStorage.setItem('popcorn_settings', JSON.stringify(settings));
-      if (settings.tmdbApiKey) {
-        setTmdbApiKey(settings.tmdbApiKey);
+      if (typeof window !== 'undefined') {
+        localStorage.setItem('popcorn_settings', JSON.stringify(settings));
+        if (settings.tmdbApiKey) {
+          setTmdbApiKey(settings.tmdbApiKey);
+        }
       }
     } catch (e) {
       console.error(e);
@@ -148,9 +200,10 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
   // Dynamic Domain SEO Detection & Initial Analytics on Mount
   useEffect(() => {
-    applyDomainSEO();
-    trackPageView('home', 'Popcorn Movies & TV Stream');
-  }, []);
+    if (typeof window !== 'undefined') {
+      trackPageView('home', `${brandConfig.brandName} & TV Stream`);
+    }
+  }, [brandConfig]);
 
   // Real-time Cloud Firestore Watchlist & Settings Sync with Firebase Auth
   useEffect(() => {
@@ -193,20 +246,45 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   };
 
   const handleSetActiveTab = (tab: NavTab) => {
-    triggerHaptic('light');
+    if (typeof window !== 'undefined') {
+      triggerHaptic('light');
+    }
     setActiveTab(tab);
+    if (typeof window !== 'undefined') {
+      const tabPath: Record<NavTab, string> = {
+        home: '/',
+        browse: '/discover',
+        search: '/search',
+        library: '/library',
+        menu: '/',
+      };
+      const nextPath = tabPath[tab];
+      if (nextPath && window.location.pathname !== nextPath) {
+        window.history.pushState({}, '', nextPath);
+      }
+    }
     trackPageView(tab);
   };
 
   const handleSetSelectedMedia = (media: MediaItem | null) => {
-    if (media) {
+    if (media && typeof window !== 'undefined') {
       triggerHaptic('medium');
     }
     setSelectedMedia(media);
+    if (typeof window !== 'undefined') {
+      if (media) {
+        const nextPath = getMediaPath(media);
+        if (window.location.pathname !== nextPath) {
+          window.history.pushState({}, '', nextPath);
+        }
+      } else if (/^\/(movie|tv)\/[^/]+$/.test(window.location.pathname)) {
+        window.history.back();
+      }
+    }
   };
 
   const handleSetActivePlayerMedia = (media: MediaItem | null) => {
-    if (media) {
+    if (media && typeof window !== 'undefined') {
       triggerHaptic('heavy');
     }
     setActivePlayerMedia(media);
@@ -214,7 +292,9 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
   const addToWatchlist = (item: MediaItem) => {
     if (!isInWatchlist(item.id)) {
-      triggerHaptic('success');
+      if (typeof window !== 'undefined') {
+        triggerHaptic('success');
+      }
       const newItem: WatchlistItem = {
         id: item.id,
         item,
@@ -236,7 +316,9 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   };
 
   const removeFromWatchlist = (id: number) => {
-    triggerHaptic('light');
+    if (typeof window !== 'undefined') {
+      triggerHaptic('light');
+    }
     const target = watchlist.find(w => w.id === id);
     setWatchlist(prev => prev.filter(w => w.id !== id));
     if (target) {
@@ -262,7 +344,9 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   };
 
   const toggleFavorite = (id: number) => {
-    triggerHaptic('medium');
+    if (typeof window !== 'undefined') {
+      triggerHaptic('medium');
+    }
     setWatchlist(prev => prev.map(w => {
       if (w.id === id) {
         const nextFav = !w.isFavorite;
@@ -280,7 +364,9 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   };
 
   const markAsWatched = (id: number, watched: boolean) => {
-    triggerHaptic('medium');
+    if (typeof window !== 'undefined') {
+      triggerHaptic('medium');
+    }
     setWatchlist(prev => prev.map(w => {
       if (w.id === id) {
         const updated = { ...w, watched, progress: watched ? 100 : 0 };
@@ -297,7 +383,9 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   };
 
   const toggleDownload = (id: number) => {
-    triggerHaptic('medium');
+    if (typeof window !== 'undefined') {
+      triggerHaptic('medium');
+    }
     setWatchlist(prev => prev.map(w => {
       if (w.id === id) {
         const isDownloaded = !w.downloaded;
@@ -311,18 +399,24 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const addRecentSearch = (term: string) => {
     const clean = term.trim();
     if (!clean) return;
-    triggerHaptic('selection');
+    if (typeof window !== 'undefined') {
+      triggerHaptic('selection');
+    }
     trackSearch(clean, 0);
     setRecentSearches(prev => [clean, ...prev.filter(s => s.toLowerCase() !== clean.toLowerCase())].slice(0, 10));
   };
 
   const clearRecentSearches = () => {
-    triggerHaptic('light');
+    if (typeof window !== 'undefined') {
+      triggerHaptic('light');
+    }
     setRecentSearches([]);
   };
 
   const updateSettings = (newSettings: Partial<AppSettings>) => {
-    triggerHaptic('medium');
+    if (typeof window !== 'undefined') {
+      triggerHaptic('medium');
+    }
     const merged = { ...settings, ...newSettings };
     setSettings(merged);
     showToast('Preferences updated', 'info');
@@ -342,6 +436,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         setSelectedMedia: handleSetSelectedMedia,
         activePlayerMedia,
         setActivePlayerMedia: handleSetActivePlayerMedia,
+        brandConfig,
         watchlist,
         addToWatchlist,
         removeFromWatchlist,

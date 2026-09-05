@@ -23,7 +23,8 @@ import {
   ChevronDown
 } from 'lucide-react';
 import { MediaItem, CastMember } from '../types';
-import { getImageUrl, getBackdropUrl, formatYear, formatDuration, tmdbService } from '../services/tmdb';
+import { getImageUrl, getBackdropUrl, formatYear, formatDuration, tmdbService, handleTmdbImageError } from '../services/tmdb';
+import { FALLBACK_BACKDROP } from '../services/curatedData';
 import { useApp } from '../context/AppContext';
 import { MovieCard } from './MovieCard';
 import { RatingRing } from './RatingRing';
@@ -324,6 +325,7 @@ export const DetailModal: React.FC<DetailModalProps> = ({ media, onClose }) => {
               <img
                 src={getBackdropUrl(details.backdrop_path, 'original')}
                 alt={title}
+                onError={(event) => handleTmdbImageError(event, FALLBACK_BACKDROP)}
                 className="w-full h-full object-cover filter brightness-90"
               />
               <div className="absolute inset-0 bg-gradient-to-t from-[#050508] via-[#050508]/60 to-transparent" />
@@ -370,6 +372,7 @@ export const DetailModal: React.FC<DetailModalProps> = ({ media, onClose }) => {
               <img
                 src={getImageUrl(details.poster_path, 'w500')}
                 alt={title}
+                onError={handleTmdbImageError}
                 className="w-full h-full object-cover"
               />
               <div className="absolute top-2.5 right-2.5">
