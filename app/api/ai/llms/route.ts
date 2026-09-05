@@ -1,0 +1,231 @@
+import { NextResponse } from 'next/server';
+import { DEFAULT_BRAND_CONFIG, BINGEBOX_CONFIG } from '@/src/lib/domainBranding';
+
+// LLMs.txt specification for AI agents
+// This file helps AI agents understand the site's content and capabilities
+const LLMS_TXT = `# LLMs.txt - AI Agent Discovery & Capabilities
+
+## About Popcorn Movies
+
+Popcorn Movies is a cutting-edge movie and TV series discovery platform that provides:
+- Real-time trending movies and TV shows from TMDB
+- High-quality 4K official trailers via YouTube
+- Multi-brand support (Popcorn Movies, BingeBox)
+- Cloud-synced watchlists and favorites
+- Advanced filtering and search capabilities
+- Streaming server engine integration
+- Progressive Web App (PWA) support
+
+## Brands & Domains
+
+### Popcorn Movies
+- Primary Domain: https://popcornmovies.online/
+- Description: Ultimate frosted glass cinema streaming experience
+- Focus: Movie discovery, trailers, TMDB ratings
+- Color Scheme: Violet (#8B5CF6), Indigo (#6366F1)
+
+### BingeBox
+- Primary Domain: https://bingebox.work/
+- Description: Ultimate streaming and cinema discovery experience
+- Focus: Binge watching, TV series, streaming
+- Color Scheme: Cyan (#06B6D4), Blue (#0891B2)
+
+## AI Agent Capabilities
+
+### Content Discovery
+- **Search**: Find movies and TV shows by title, genre, keywords
+- **Filtering**: Filter by type (movie/tv), genre, release year, rating
+- **Trending**: Access real-time trending content from TMDB
+- **Recommendations**: Get personalized recommendations based on watch history
+
+### Data Access
+- **TMDB API**: Full access to The Movie Database API
+- **Media Details**: Title, overview, poster, backdrop, ratings, release dates
+- **Genres**: Comprehensive genre categorization
+- **Cast & Crew**: Actor information, roles, profiles
+- **Trailers**: Official YouTube trailers and video content
+- **Reviews**: User reviews and ratings
+
+### User Features
+- **Watchlist**: Save movies and shows for later
+- **Favorites**: Mark content as favorites
+- **Progress Tracking**: Track watching progress
+- **Cloud Sync**: Sync across devices via Firebase
+- **Offline Mode**: Download for offline viewing (PWA)
+
+### Technical Features
+- **Streaming Engines**: 11 high-speed streaming server engines
+- **Quality Options**: 720p, 1080p, 4K streaming
+- **Multi-Language**: Support for multiple languages
+- **Subtitles**: Multi-language subtitle support
+- **Ambient Lighting**: Dynamic ambient lighting based on video content
+
+## API Endpoints
+
+### REST API
+- **Base URL**: /api/v1
+- **Search**: /api/v1/search?q={query}
+- **Discover**: /api/v1/discover?type={movie|tv}&genre={id}&sort={popularity|rating|date}
+- **Details**: /api/v1/media/{id}?type={movie|tv}
+- **Trending**: /api/v1/trending?type={movie|tv}&time={day|week}
+
+### GraphQL API
+- **Endpoint**: /api/graphql
+- **Query Examples**:
+  \`\`\`graphql
+  query {
+    trendingMovies {
+      id
+      title
+      poster_path
+      vote_average
+    }
+    trendingTV {
+      id
+      name
+      poster_path
+      vote_average
+    }
+  }
+  \`\`\`
+
+## AI Integration
+
+### Agent Tools
+- **Search Tool**: search_media(query: string, type?: 'movie' | 'tv') -> MediaItem[]
+- **Discover Tool**: discover_media(filter: FilterOptions) -> MediaItem[]
+- **Details Tool**: get_media_details(id: number, type: 'movie' | 'tv') -> MediaItem
+- **Recommendations Tool**: get_recommendations(userId: string, limit?: number) -> MediaItem[]
+
+### Agent Prompts
+- "Find popular action movies from 2024"
+- "Show me highly rated TV series with good reviews"
+- "Recommend movies similar to Inception"
+- "What's trending this week?"
+- "Find family-friendly movies with high ratings"
+
+## Data Schema
+
+### MediaItem
+- **id**: number (TMDB ID)
+- **title**: string (Movie title or TV show name)
+- **overview**: string
+- **poster_path**: string (URL to poster image)
+- **backdrop_path**: string (URL to backdrop image)
+- **vote_average**: number (Rating 0-10)
+- **vote_count**: number
+- **release_date**: string (YYYY-MM-DD)
+- **media_type**: 'movie' | 'tv'
+- **genre_ids**: number[]
+- **runtime**: number (minutes, movies only)
+- **number_of_seasons**: number (TV only)
+- **number_of_episodes**: number (TV only)
+
+### Genre
+- **id**: number
+- **name**: string
+
+## Usage Guidelines
+
+1. **Rate Limiting**: Respect API rate limits (TMDB: 40 requests/10 seconds)
+2. **Caching**: Cache responses appropriately
+3. **Attribution**: Credit TMDB for movie/TV data
+4. **Privacy**: Respect user privacy and data protection
+5. **Content Policy**: Follow TMDB content guidelines
+
+## Contact
+
+- **Website**: https://popcornmovies.online/
+- **Alternate**: https://bingebox.work/
+- **API Version**: 1.0.0
+- **Last Updated**: ${new Date().toISOString()}
+
+## Legal
+
+- **Terms of Service**: Available on respective domains
+- **Privacy Policy**: User data handled according to Firebase policies
+- **Copyright**: All movie/TV data © TMDB
+- **Trademarks**: Popcorn Movies, BingeBox are service marks
+
+---
+Generated by Popcorn Movies AI Discovery System
+`;
+
+// Full LLMs.txt with extended details
+const LLMS_FULL_TXT = `# LLMs.txt - Full Specification
+
+${LLMS_TXT}
+
+## Advanced Features
+
+### Streaming Integration
+- **Multi-Server**: Support for 11 different streaming engines
+- **Auto-Quality**: Automatic quality selection based on network
+- **Server Switching**: Seamless switching between streaming sources
+- **Fallback Logic**: Automatic fallback if primary server fails
+
+### AI-Powered Features
+- **Smart Search**: Natural language search processing
+- **Personalization**: ML-based recommendations
+- **Trend Analysis**: AI-driven trending detection
+- **Content Classification**: Automatic genre and mood classification
+
+### Offline Capabilities
+- **PWA Support**: Installable as Progressive Web App
+- **Offline Storage**: Local storage for watchlist and preferences
+- **Background Sync**: Automatic sync when connection restored
+- **Cache Management**: Intelligent caching of media data
+
+### Accessibility
+- **Keyboard Navigation**: Full keyboard support
+- **Screen Reader**: ARIA-compliant interface
+- **High Contrast**: High contrast mode support
+- **Reduced Motion**: Respects user motion preferences
+
+## Security
+
+### Authentication
+- **Firebase Auth**: Google, email/password, anonymous auth
+- **Secure Storage**: Encrypted local storage
+- **Session Management**: Secure session handling
+
+### Data Protection
+- **HTTPS**: All connections encrypted
+- **CORS**: Proper CORS configuration
+- **CSRF Protection**: CSRF tokens for sensitive operations
+- **Rate Limiting**: Protection against abuse
+
+## Performance
+
+### Optimization
+- **Lazy Loading**: Images and data loaded on demand
+- **Code Splitting**: Dynamic imports for better performance
+- **Bundle Analysis**: Optimized bundle sizes
+- **CDN Usage**: Global CDN for static assets
+
+### Monitoring
+- **Error Tracking**: Automatic error reporting
+- **Performance Metrics**: Real user monitoring
+- **Analytics**: User behavior analytics
+- **Logging**: Structured logging for debugging
+
+---
+Full LLMs.txt Specification for Popcorn Movies & BingeBox
+`;
+
+export async function GET(request: Request) {
+  const { searchParams } = new URL(request.url);
+  const full = searchParams.get('full') === 'true';
+  
+  const llmsTxt = full ? LLMS_FULL_TXT : LLMS_TXT;
+  
+  return new NextResponse(llmsTxt, {
+    status: 200,
+    headers: {
+      'Content-Type': 'text/markdown; charset=utf-8',
+      'Cache-Control': 'public, max-age=86400', // 24 hours
+      'X-Content-Type-Options': 'nosniff',
+      'X-Robots-Tag': 'index, follow',
+    },
+  });
+}
